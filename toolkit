@@ -408,7 +408,7 @@ function RCLONE () {
         fi
         CONFIG $RCLONE_CONFIG_PATH "url " " http://127.0.0.1:"$ALIST_PORT"/dav"
         CONFIG $RCLONE_CONFIG_PATH "user " " $ALIST_USER"
-        $RCLONE_PATH config password AList pass "$ALIST_PASSWORD" --config "$RCLONE_CONFIG_PATH" >> /dev/null 2>&1
+        $RCLONE_PATH config password AList pass "$ALIST_PASSWORD" --config "$RCLONE_CONFIG_PATH" >/dev/null 2>&1
     fi
     if [ ! "$REMOTE" = "AList" -o ! "$ALIST_PID" = "✘" ];then
         mkdir -p $NERIBOXDIR/Cloud/$REMOTE $NERIBOXDIR/temp $NERIBOXDIR/temp/cache-backend /data/media/0/$MOUNTDIR
@@ -428,8 +428,8 @@ function RCLONE () {
         if [ ! "$REMOTE" = "AList" ];then
         local RCLONE_CONFIG_PATH=$ETC_DIR/rclone.conf
         fi
-        $SU nice -n 19 ionice -c 2 -n 7 $RCLONE_PATH mount ""$REMOTE":"$CLOUDDIR"" "$NERIBOXDIR/Cloud/$REMOTE" --config "$RCLONE_CONFIG_PATH" --log-file "$NERIBOXDIR/rclone.log" --cache-dir "$NERIBOXDIR/temp" --cache-chunk-path "$NERIBOXDIR/temp/cache-backend" --cache-db-path "$NERIBOXDIR/temp/cache-backend" --cache-tmp-upload-path "$NERIBOXDIR/temp" $PARM --daemon >> /dev/null 2>&1 &
-        local MNTDIR="($(find /mnt -maxdepth 4 -name emulated | grep -v pass_through 2>/dev/null) /storage/emulated)"
+        $SU nice -n 19 ionice -c 2 -n 7 $RCLONE_PATH mount ""$REMOTE":"$CLOUDDIR"" "$NERIBOXDIR/Cloud/$REMOTE" --config "$RCLONE_CONFIG_PATH" --log-file "$NERIBOXDIR/log.txt" --cache-dir "$NERIBOXDIR/temp" --cache-chunk-path "$NERIBOXDIR/temp/cache-backend" --cache-db-path "$NERIBOXDIR/temp/cache-backend" --cache-tmp-upload-path "$NERIBOXDIR/temp" $PARM --daemon &
+        local MNTDIR="($(find /mnt -maxdepth 4 -name emulated | grep -v pass_through) /storage/emulated)"
         for i in ${MNTDIR[@]};do
             if [ -e "$i/0" ];then
                 chown media_rw:media_rw "$i/0/$MOUNTDIR"
@@ -685,7 +685,7 @@ echo -e $HELP
 }
 
 LOG () {
-    $@
+    $@ >> $NERIBOXDIR/log.txt 2>&1
 }
 
 function CONSOLE () {
