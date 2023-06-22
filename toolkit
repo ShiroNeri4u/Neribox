@@ -1,0 +1,797 @@
+#!/system/bin/sh
+#SU检测
+if [ -f /data/adb/magisk/busybox ];then
+BUSYBOX_PATH=/data/adb/magisk/busybox
+SU="magisk su -M -c"
+elif [ -f /data/adb/ksu/bin/busybox ];then
+BUSYBOX_PATH=/data/adb/ksu/bin/busybox
+SU="nsenter -t 1 -m --"
+fi
+
+MODDIR="$($BUSYBOX_PATH dirname "$(readlink -f "$0")")"
+#可执行文件路径
+EXE_DIR="$MODDIR/bin"
+LIB_DIR="$MODDIR/lib"
+ETC_DIR="$MODDIR/etc"
+PATH=$PATH:$EXE_DIR
+ALIST_PATH="$EXE_DIR/alist"
+ARIA2_PATH="$EXE_DIR/aria2c"
+LIGHTTPD_PATH="$EXE_DIR/lighttpd"
+RCLONE_PATH="$EXE_DIR/rclone"
+FRPC_PATH="$EXE_DIR/frpc"
+SQLITE_PATH="$EXE_DIR/sqlite3"
+JQ_PATH="$EXE_DIR/jq"
+FUSERMOUNT_PATH="$EXE_DIR/fusermount3"
+#工作路径
+NERIBOXDIR="/data/adb/Neribox"
+UPDATEDIR="$NERIBOXDIR/update-cache"
+#配置文件路径
+CONFIG_PATH="$NERIBOXDIR/config.ini"
+ALIST_CONFIG_PATH="$ETC_DIR/config.json"
+ARIA2_CONFIG_PATH="$ETC_DIR/aria2c.conf"
+RCLONE_CONFIG_PATH="$ETC_DIR/.rclone.conf"
+
+LANG () {
+    local LANG=$(getprop | grep persist.sys.locale | grep -v persist.sys.localevar | $BUSYBOX_PATH awk '{print $2}')
+    local LANG=${LANG:1:5}
+    if [ -f $MODDIR/support-lang/$LANG.txt ];then
+        source $MODDIR/support-lang/$LANG.txt
+    else source $MODDIR/support-lang/zh-CN.txt
+    fi
+}
+
+function CONFIG () {
+    if [ -n "$1" -a -z "$2" -a -z "$3" ];then
+    cat $1
+        elif [ -n "$1" -a -n "$2" -a -z "$3" ];then
+        cat $1 | $BUSYBOX_PATH egrep "^$2=" | $BUSYBOX_PATH sed -n 's/.*=//g;$p'
+        elif [ -n "$1" -a -n "$2" -a -n "$3" ];then
+    $BUSYBOX_PATH sed -i "s|$2=.*|$2=$3|g" $1
+    fi
+}
+
+function GETARCH () {
+    local ARCH=$(getprop ro.product.cpu.abi)
+    case $ARCH in
+    arm64-v8a)
+    ALIST_ARCH=aarch64
+    RCLONE_ARCH=armv8a
+    FRPC_ARCH=arm64
+    ;;
+    armeabi-v7a)
+    ALIST_ARCH=arm
+    RCLONE_ARCH=armv7a
+    FRPC_ARCH=arm
+    ;;
+    x86_64)
+    ALIST_ARCH=x86_64
+    RCLONE_ARCH=x64
+    FRPC_ARCH=amd64
+    ;;
+    x86)
+    ALIST_ARCH=i686
+    RCLONE_ARCH=x86
+    FRPC_ARCH=386
+    ;;
+    esac
+}
+
+function VERSION_SORT () {
+    local LATEST_VERSION=$(echo "$@" | $BUSYBOX_PATH tr " " "\n" | /system/bin/sort -rV | $BUSYBOX_PATH head -n 1)
+    if [ "$LATEST_VERSION" = $1 ];then
+    echo DONT_DOWNLOAD
+    elif [ ! "$LATEST_VERSION" = $1 ];then
+    echo DOWNLOAD
+    fi
+}
+
+function STATUS () {
+    function DAEMON () {
+        local PROGRAM=$1
+	    local CONFIG_DAEMON="$(CONFIG $CONFIG_PATH "${PROGRAM}_DAEMON")"
+        if [ "$CONFIG_DAEMON" = "true" ];then
+        echo "${PROGRAM}_DAEMON=✔"
+        elif [ "$CONFIG_DAEMON" = "false" -o -z "$CONFIG_DAEMON" ];then
+        echo "${PROGRAM}_DAEMON=✘"
+        fi
+        }
+    function PID () {
+        local PROGRAM=$1
+        case ${PROGRAM} in
+        ALIST)
+        local PID="$($BUSYBOX_PATH ps | grep "$ALIST_PATH server --data $ETC_DIR" | grep -v "grep" | $BUSYBOX_PATH awk '{print $1}')"
+        ;;
+        ARIA2)
+        local PID="$($BUSYBOX_PATH ps | grep $ARIA2_PATH | grep -v -e "grep" -e "-v" | $BUSYBOX_PATH awk '{print $1}')"
+        ;;
+        LIGHTTPD)
+        local PID="$($BUSYBOX_PATH ps | grep "$LIGHTTPD_PATH -m $LIB_DIR -f $LIGHTTPD_CONFIG_PATH" | grep -v "grep" | $BUSYBOX_PATH awk '{print $1}')"
+        ;;
+        RCLONE)
+        local PID="$($BUSYBOX_PATH ps | grep "$RCLONE_PATH mount" | grep -v "grep" | $BUSYBOX_PATH awk '{print $1}')"
+        ;;
+        FRPC)
+        local PID="$($BUSYBOX_PATH ps | grep $FRPC_PATH | grep -v -e "grep" -e "-v" | $BUSYBOX_PATH awk '{print $1}')"
+        ;;
+        SQLITE)
+        local PID="$($BUSYBOX_PATH ps | grep $SQLITE_PATH | grep -v -e "grep" -e "-version" | $BUSYBOX_PATH awk '{print $1}')"
+        ;;
+        JQ)
+    	local PID="$($BUSYBOX_PATH ps | grep $JQ_PATH | grep -v -e "grep" -e "-V" | $BUSYBOX_PATH awk '{print $1}')"
+    	;;
+        FUSERMOUNT)
+    	local PID="$($BUSYBOX_PATH ps | grep $FUSERMOUNT_PATH | grep -v -e "grep" -e "-V" | $BUSYBOX_PATH awk '{print $1}')"
+        ;;
+        esac
+        if [ ! "$2" = "PID" ];then
+		    if [ -z "$PID" ];then
+			    echo "${PROGRAM}_PID=✘"
+		        else echo "${PROGRAM}_PID=($PID)"
+            fi
+        elif [ "$2" = "PID" ];then
+            echo "$PID"
+        fi
+	}
+	function PORT () {
+        local PROGRAM=$1
+        while [ $# -gt 1 ]; do
+        case $PROGRAM in
+        ARIA2)
+        if [ -z "$PORT" ];then
+        local PORT="$(/system/bin/lsof -p $2 | grep LISTEN | grep 5u | $BUSYBOX_PATH awk '{print $9}' | $BUSYBOX_PATH sed 's/[[]]//g' | $BUSYBOX_PATH sed s/"->:0"//g | $BUSYBOX_PATH sed s/:/\/g )"
+        elif [ -n "$PORT" ];then
+        local PORT="$PORT $(/system/bin/lsof -p $2 | grep LISTEN | grep 5u | $BUSYBOX_PATH awk '{print $9}' | $BUSYBOX_PATH sed 's/[[]]//g' | $BUSYBOX_PATH sed s/"->:0"//g | $BUSYBOX_PATH sed s/:/\/g )"
+        fi
+        shift
+        ;;
+        ALIST|LIGHTTPD)
+        if [ -z "$PORT" ];then
+        local PORT="$(/system/bin/lsof -p $2 | grep LISTEN | $BUSYBOX_PATH awk '{print $9}' | $BUSYBOX_PATH sed 's/[[]]//g' | $BUSYBOX_PATH sed s/"->:0"//g | $BUSYBOX_PATH sed s/:/\/g )"
+        elif [ -n "$PORT" ];then
+        local PORT="$PORT $(/system/bin/lsof -p $2 | grep LISTEN | $BUSYBOX_PATH awk '{print $9}' | $BUSYBOX_PATH sed 's/[[]]//g' | $BUSYBOX_PATH sed s/"->:0"//g | $BUSYBOX_PATH sed s/:/\/g )"
+        fi
+        shift
+        ;;
+        esac
+        done
+		if [ -z "$PORT" ];then
+			echo "${PROGRAM}_PORT=✘"
+		else echo "${PROGRAM}_PORT=($PORT)"
+        fi
+    }
+    function VERSION () {
+        local PROGRAM=$1
+        case ${PROGRAM} in
+        ALIST)
+        local VERSION=$($ALIST_PATH version | $BUSYBOX_PATH egrep '^Version:' | $BUSYBOX_PATH awk '{print $2}' )
+        ;;
+        ARIA2)
+        local VERSION=$($ARIA2_PATH -v | $BUSYBOX_PATH egrep '^aria2 version' | $BUSYBOX_PATH awk '{print $3}' )
+        ;;
+        LIGHTTPD)
+        local VERSION=$($LIGHTTPD_PATH -v | $BUSYBOX_PATH egrep '^lighttpd' | $BUSYBOX_PATH awk '{print $1}' | $BUSYBOX_PATH sed s/[a-zA-Z/]//g )
+        ;;
+        RCLONE)
+        local VERSION=$($RCLONE_PATH version | $BUSYBOX_PATH egrep '^rclone' | $BUSYBOX_PATH awk '{print $2}' | $BUSYBOX_PATH cut -d - -f 1 | $BUSYBOX_PATH sed s/v//g )
+        ;;
+        FRPC)
+        local VERSION=$($FRPC_PATH -v | $BUSYBOX_PATH awk -F "-" '{print $1}' )
+        ;;
+        SQLITE)
+        local VERSION=$($SQLITE_PATH -version | $BUSYBOX_PATH awk '{print $1}' )
+        ;;
+        JQ)
+        local VERSION=$($JQ_PATH -V | $BUSYBOX_PATH awk -F - '{print $2}' )
+        ;;
+        FUSERMOUNT)
+        local VERSION=$($FUSERMOUNT_PATH -V | $BUSYBOX_PATH sed -n 's/.*: //g;$p' )
+        ;;
+        esac
+        if [ -z "$VERSION" ];then
+            echo "${PROGRAM}_VERSION=✘"
+        else echo "${PROGRAM}_VERSION=$VERSION"
+        fi
+    }
+    function USERANDPASSWORD () {
+        local TYPE=$1
+        local DB_FILE_PATH=$(cat $ALIST_CONFIG_PATH | $JQ_PATH .database.db_file | $BUSYBOX_PATH sed 's/"//g' )
+            if [ -f $DB_FILE_PATH ];then
+                local TABLE_PREFIX=$(cat $ALIST_CONFIG_PATH | $JQ_PATH .database.table_prefix | $BUSYBOX_PATH sed 's/"//g')users
+                local USER_INFO=$($SQLITE_PATH $DB_FILE_PATH <<EOF
+SELECT *FROM $TABLE_PREFIX where role like "2";
+EOF)
+            fi
+        case $TYPE in
+        USER)
+        local ALIST_USER="$(echo $USER_INFO | $BUSYBOX_PATH awk -F "|" '{print $2}')"
+        if [ -z "$ALIST_USER" ];then
+        echo "ALIST_USER=✘"
+        else echo "ALIST_USER=$ALIST_USER"
+        fi
+        ;;
+        PASSWORD)
+        local ALIST_PASSWORD="$(echo $USER_INFO | $BUSYBOX_PATH awk -F "|" '{print $3}' )"
+        if [ -z "$ALIST_PASSWORD" ];then
+        echo "ALIST_PASSWORD=✘"
+        else echo "ALIST_PASSWORD=$ALIST_PASSWORD"
+        fi
+        ;;
+        esac
+    }
+    function PROGRAM () {
+	    local program=$1
+	        while [ $# -gt 1 ]; do
+	            case "$2" in
+	            DAEMON)
+                eval $(DAEMON $program &)
+                shift
+	            ;;
+	            PID)
+	            eval $(PID $program &)
+	            shift
+	            ;;
+                PORT)
+                eval $(PORT $program $(PID $program PID) &)
+                shift
+                ;;
+                VERSION)
+                eval $(VERSION $program &)
+                shift
+                ;;
+                USER|PASSWORD)
+                if [ "$program" = "ALIST" ];then
+                eval $(USERANDPASSWORD $2 &)
+                fi
+                shift
+                ;;
+                WEBUI)
+                if [ "$program" = "ARIA2" ];then
+                local LIGHTTPD_CONFIG_PATH=$ETC_DIR/lighttpd_ariang.conf
+                eval WEBUI=$(echo "$(PORT LIGHTTPD $(PID LIGHTTPD PID) &)" | $BUSYBOX_PATH sed -n 's/.*=//g;$p' )
+                fi
+                shift
+                ;;
+	            esac
+	        done
+	}
+while [ $# -gt 0 ]; do
+	case "$1" in
+	*)
+	    PROGRAM $(echo $1|$BUSYBOX_PATH awk -F [ '{print $1}') $(echo $1|$BUSYBOX_PATH cut -d '[' -f2|$BUSYBOX_PATH cut -d ']' -f1|$BUSYBOX_PATH awk -F "," -v OFS=" " '{var=$1;$1=var;print $0}')
+	shift
+	;;
+	esac
+done
+wait
+}
+
+function ALIST () {
+    local LIGHTTPD_CONFIG_PATH="$MODDIR/etc/lighttpd_proxy.conf"
+    case $1 in
+    START)
+    while [ -z "$(ping -c 1 www.baidu.com)" ];do
+    sleep 0.3
+    done
+    STATUS ALIST[PID]
+    if [ "$ALIST_PID" = "✘" ];then
+        $ALIST_PATH start --data $ETC_DIR
+        if [ "$(CONFIG $CONFIG_PATH ALIST_PROXY)" = "true" ];then
+            LIGHTTPD START &
+        fi
+    fi
+    ;;
+    STOP)
+    STATUS ALIST[PID]
+    if [ ! "$ALIST_PID" = "✘" ];then
+        $ALIST_PATH stop
+    fi
+        LIGHTTPD STOP &
+    ;;
+    UPDATE)
+    DOWNLOAD () {
+        MKDIR
+        GETARCH
+        local PACK="alist_"$VERSION_UPDATE"_"$ALIST_ARCH".deb"
+        curl -# -o $UPDATEDIR/$PACK "$LINK""$PACK" && $BUSYBOX_PATH ar -p $UPDATEDIR/$PACK data.tar.xz >> $UPDATEDIR/data.tar.xz && $BUSYBOX_PATH tar -xf $UPDATEDIR/data.tar.xz -C $UPDATEDIR && mv -f $UPDATEDIR/data/data/com.termux/files/usr/bin/alist $ALIST_PATH && chown root:root $ALIST_PATH && chmod 744 $ALIST_PATH
+    }
+    local TERMUX_REPO="$(CONFIG $CONFIG_PATH TERMUX_REPO)"
+    local LINK="$TERMUX_REPO"/apt/termux-main/pool/main/a/alist/
+    local VERSION_UPDATE=$(curl -Ls "$LINK" | grep "aarch64.deb" | $BUSYBOX_PATH cut -d'_' -f2 | tail -1 )
+    if [ -n "$VERSION_UPDATE" ];then
+        STATUS ALIST[VERSION]
+        if [ ! "$ALIST_VERSION" = "✘" ];then
+        case "$(VERSION_SORT $ALIST_VERSION $VERSION_UPDATE)" in
+        DOWNLOAD)
+        DOWNLOAD
+        echo DOWNLOAD
+        ;;
+        DONT_DOWNLOAD)
+        echo NEW
+        ;;
+        esac
+        elif [ "$ALIST_VERSION" = "✘" ];then
+        DOWNLOAD
+        echo DOWNLOAD
+        fi
+    elif [ -z "$VERSION_UPDATE" ];then
+        echo CHECK_NETWORK
+    fi
+    ;;
+    esac
+}
+
+function ARIA2 () {
+    local LIGHTTPD_CONFIG_PATH="$MODDIR/etc/lighttpd_ariang.conf"
+    case $1 in
+    START)
+    STATUS ARIA2[PID]
+    if [ "$ARIA2_PID" = "✘" ];then
+        $ARIA2_PATH --conf-path=$ARIA2_CONFIG_PATH -D
+        if [ "$(CONFIG $CONFIG_PATH ARIANG_WEBUI)" = "true" ];then
+            LIGHTTPD START &
+        fi
+    fi
+    ;;
+    STOP)
+    STATUS ARIA2[PID]
+    if [ ! "$ARIA2_PID" = "✘" ];then
+        kill -9 $ARIA2_PID
+    fi
+        LIGHTTPD STOP &
+    ;;
+    UPDATE)
+    DOWNLOAD () {
+        MKDIR
+        PACK="aria2-"$VERSION_UPDATE"-aarch64-linux-android-build1"
+        curl -# -LJo $UPDATEDIR/$PACK.zip https://github.com/aria2/aria2/releases/download/release-"$VERSION_UPDATE"/"$PACK".zip && $BUSYBOX_PATH unzip -d $UPDATEDIR -o -q $UPDATEDIR/$PACK.zip && mv -f $UPDATEDIR/$PACK/aria2c $ARIA2_PATH && chown root:root $ARIA2_PATH && chmod 744 $ARIA2_PATH
+    }
+    local VERSION_UPDATE=$($BUSYBOX_PATH wget -qO- -t1 -T2 --no-check-certificate "https://api.github.com/repos/aria2/aria2/releases/latest" | $JQ_PATH -r '.tag_name' | $BUSYBOX_PATH awk -F - '{print $2}' )
+        if [ -n "$VERSION_UPDATE" ];then
+        STATUS ARIA2[VERSION]
+        if [ ! "$ARIA2_VERSION" = "✘" ];then
+        case "$(VERSION_SORT $ARIA2_VERSION $VERSION_UPDATE)" in
+        DOWNLOAD)
+        DOWNLOAD
+        echo DOWNLOAD
+        ;;
+        DONT_DOWNLOAD)
+        echo NEW
+        ;;
+        esac
+        elif [ "$ARIA2_VERSION" = "✘" ];then
+        DOWNLOAD
+        echo DOWNLOAD
+        fi
+    elif [ -z "$VERSION_UPDATE" ];then
+        echo CHECK_NETWORK
+    fi
+    ;;
+    esac
+}
+
+function LIGHTTPD () {
+    if [ -n "$2" ];then
+    local LIGHTTPD_CONFIG_PATH="$2"
+    fi
+    case $1 in
+    START)
+    STATUS LIGHTTPD[PID]
+    if [ "$LIGHTTPD_PID" = "✘" ];then
+        $LIGHTTPD_PATH -m $LIB_DIR -f $LIGHTTPD_CONFIG_PATH
+    fi
+    ;;
+    STOP)
+    STATUS LIGHTTPD[PID]
+    if [ ! "$LIGHTTPD_PID" = "✘" ];then
+        kill -9 $LIGHTTPD_PID
+    fi
+    ;;
+    esac
+}
+
+function RCLONE () {
+    case $1 in
+    MOUNT)
+    if [ -z "$REMOTE" ];then
+        local REMOTE="AList"
+    fi
+    if [ -z "$MOUNTDIR" ];then
+        local MOUNTDIR="$(CONFIG $CONFIG_PATH MOUNTDIR)"
+    fi
+    if [ -z "$CLOUDDIR" ];then
+        local CLOUDDIR="$(CONFIG $CONFIG_PATH CLOUDDIR)"
+    fi
+    if [ "$REMOTE" = "AList" ];then
+    STATUS ALIST[PID,PORT,USER,PASSWORD]
+        if [ "$ALIST_PORT" = "✘" ];then
+        local PORT=$(cat $ALIST_CONFIG_PATH | $JQ_PATH .port | $BUSYBOX_PATH sed 's/"//g')
+        fi
+        CONFIG $RCLONE_CONFIG_PATH "url " " http://127.0.0.1:"$ALIST_PORT"/dav"
+        CONFIG $RCLONE_CONFIG_PATH "user " " $ALIST_USER"
+        $RCLONE_PATH config password AList pass "$ALIST_PASSWORD" --config "$RCLONE_CONFIG_PATH" >> /dev/null 2>&1
+    fi
+    if [ ! "$REMOTE" = "AList" -o ! "$ALIST_PID" = "✘" ];then
+        mkdir -p $NERIBOXDIR/Cloud/$REMOTE $NERIBOXDIR/temp $NERIBOXDIR/temp/cache-backend /data/media/0/$MOUNTDIR
+        touch $NERIBOXDIR/Cloud/.nomedia
+        chown root:sdcard_rw $NERIBOXDIR/Cloud/.nomedia
+        chmod 0644 $NERIBOXDIR/Cloud/.nomedia
+        chown root:sdcard_rw "$NERIBOXDIR"/temp
+        chmod 0775 $NERIBOXDIR/temp
+        chown root:sdcard_rw $NERIBOXDIR/temp/cache-backend
+        chmod 0775 $NERIBOXDIR/temp/cache-backend
+
+        local PARM_FILE=$ETC_DIR/$REMOTE.parm
+        if [ ! -f $PARM_FILE ];then
+        local PARM_FILE=$ETC_DIR/Default.parm
+        fi
+        PARM="$(cat $PARM_FILE | $BUSYBOX_PATH sed '/--config/d;/--log-file/d;/--cache-dir/d;/--cache-chunk-path/d;/--cache-db-path/d;/--cache-tmp-upload-path/d;/--daemon/d;' | $BUSYBOX_PATH sed 's/^[ \t]*//g' | $BUSYBOX_PATH sed 's/[ \t]*$//g' | $BUSYBOX_PATH tr -s "\r\n" " ")"
+        if [ ! "$REMOTE" = "AList" ];then
+        local RCLONE_CONFIG_PATH=$ETC_DIR/rclone.conf
+        fi
+        $SU nice -n 19 ionice -c 2 -n 7 $RCLONE_PATH mount ""$REMOTE":"$CLOUDDIR"" "$NERIBOXDIR/Cloud/$REMOTE" --config "$RCLONE_CONFIG_PATH" --log-file "$NERIBOXDIR/rclone.log" --cache-dir "$NERIBOXDIR/temp" --cache-chunk-path "$NERIBOXDIR/temp/cache-backend" --cache-db-path "$NERIBOXDIR/temp/cache-backend" --cache-tmp-upload-path "$NERIBOXDIR/temp" $PARM --daemon >> /dev/null 2>&1 &
+        local MNTDIR="($(find /mnt -maxdepth 4 -name emulated | grep -v pass_through 2>/dev/null) /storage/emulated)"
+        for i in ${MNTDIR[@]};do
+            if [ -e "$i/0" ];then
+                chown media_rw:media_rw "$i/0/$MOUNTDIR"
+                $SU mount --bind $NERIBOXDIR/Cloud/$REMOTE $i/0/$MOUNTDIR
+                if [ -n "$($SU mount | grep /storage/emulated/0/$MOUNTDIR | grep fuse.rclone)" ];then
+                    break
+                fi
+            fi
+        done
+    fi
+    ;;
+    UMOUNT)
+    if [ -z "$REMOTE" ];then
+        local MNTDIR="($($SU mount | grep fuse.rclone | $BUSYBOX_PATH awk '{print $3}'))"
+    else
+        local MNTDIR="($($SU mount | grep $REMOTE | $BUSYBOX_PATH awk '{print $3}'))"
+    fi
+    for i in ${MNTDIR[@]};do
+        if [ -n "$($SU mount | grep $i | $BUSYBOX_PATH awk '{print $3}')" ];then
+            $SU $BUSYBOX_PATH umount -lf $i
+        fi
+    done
+    if [ -z "$REMOTE" ];then
+        $RCLONE_PATH purge --config "$RCLONE_CONFIG_PATH" $NERIBOXDIR/Cloud/*
+    else
+        $RCLONE_PATH purge --config "$RCLONE_CONFIG_PATH" $NERIBOXDIR/Cloud/$REMOTE
+    fi
+    ;;
+    CONFIG)
+        $RCLONE_PATH config --config $ETC_DIR/rclone.conf
+    ;;
+    UPDATE)
+    DOWNLOAD () {
+        MKDIR
+        GETARCH
+        PACK="rclone-android-21-"$RCLONE_ARCH""
+        curl -# -LJo $UPDATEDIR/$PACK.gz https://beta.rclone.org/test/testbuilds-latest/$PACK.gz && $BUSYBOX_PATH gzip -d $UPDATEDIR/$PACK.gz && mv -f $UPDATEDIR/$PACK $RCLONE_PATH && chown root:root $RCLONE_PATH && chmod 744 $RCLONE_PATH
+    }
+    local VERSION_UPDATE="$(curl -fsS https://beta.rclone.org/version.txt | $BUSYBOX_PATH awk -F . '{print $4}' )"
+    if [ -n "$VERSION_UPDATE" ];then
+        local RCLONE_VERSION="$($RCLONE_PATH version | $BUSYBOX_PATH egrep '^rclone' | $BUSYBOX_PATH awk '{print $2}' | $BUSYBOX_PATH awk -F . '{print $4}')"
+        if [ -n "$RCLONE_VERSION" ];then
+        case "$(VERSION_SORT $RCLONE_VERSION $VERSION_UPDATE)" in
+        DOWNLOAD)
+        DOWNLOAD
+        echo DOWNLOAD
+        ;;
+        DONT_DOWNLOAD)
+        echo NEW
+        ;;
+        esac
+        elif [ -z "$RCLONE_VERSION" ];then
+        DOWNLOAD
+        echo DOWNLOAD
+        fi
+    elif [ -z "$VERSION_UPDATE" ];then
+        echo CHECK_NETWORK
+    fi
+    ;;
+    esac
+}
+
+function FRPC () {
+    case $1 in
+    START)
+    local FRPC_PARM=$(CONFIG $CONFIG_PATH FRPC_PARM)
+    if [ -n "$2" ];then
+    local FRPC_PARM=$2
+    fi
+    if [ -n "$FRPC_PARM" ];then
+    nohup $FRPC_PATH $FRPC_PARM &
+    fi
+    ;;
+    STOP)
+    STATUS FRPC[PID]
+    if [ ! "$FRPC_PID" = "✘" ];then
+    kill -9 $FRPC_PID
+    fi
+    ;;
+    UPDATE)
+    DOWNLOAD () {
+        MKDIR
+        GETARCH
+        PACK="frp_"$VERSION_UPDATE"_linux_"$FRPC_ARCH""
+        curl -# -LJo $UPDATEDIR/$PACK.tar.gz https://github.com/fatedier/frp/releases/download/v"$VERSION_UPDATE"/"$PACK".tar.gz && $BUSYBOX_PATH tar -xzf $UPDATEDIR/$PACK.tar.gz -C $UPDATEDIR && mv -f $UPDATEDIR/$PACK/frpc $FRPC_PATH && chown root:root $FRPC_PATH && chmod 744 $FRPC_PATH
+    }
+    local VERSION_UPDATE=$($BUSYBOX_PATH wget -qO- -t1 -T2 --no-check-certificate "https://api.github.com/repos/fatedier/frp/releases/latest" | $JQ_PATH -r '.tag_name' | $BUSYBOX_PATH sed s/"v"//g )
+    if [ -n "$VERSION_UPDATE" ];then
+        STATUS FRPC[VERSION]
+        if [ ! "$FRPC_VERSION" = "✘" ];then
+        case "$(VERSION_SORT $FRPC_VERSION $VERSION_UPDATE)" in
+        DOWNLOAD)
+        DOWNLOAD
+        echo DOWNLOAD
+        ;;
+        DONT_DOWNLOAD)
+        echo NEW
+        ;;
+        esac
+        elif [ "$FRPC_VERSION" = "✘" ];then
+        DOWNLOAD
+        echo DOWNLOAD
+        fi
+    elif [ -z "$VERSION_UPDATE" ];then
+        echo CHECK_NETWORK
+    fi
+    ;;
+    esac
+}
+
+function TRACKERLIST () {
+    case $1 in
+    UPDATE)
+    $BUSYBOX_PATH sed -i '/bt-tracker=/d' $ARIA2_CONFIG_PATH
+    while [ -z "$(grep 'bt-tracker' $ARIA2_CONFIG_PATH | $BUSYBOX_PATH cut -d '=' -f 2)" ];do
+    $BUSYBOX_PATH sed -i '/bt-tracker=/d' $ARIA2_CONFIG_PATH | echo "bt-tracker=`$BUSYBOX_PATH wget --no-check-certificate -qO- "$(CONFIG $CONFIG_PATH TRACKERLIST)" | $BUSYBOX_PATH awk NF | $BUSYBOX_PATH sed ":a;N;s/\n/,/g;ta"`" >> $ARIA2_CONFIG_PATH
+    done
+    ;;
+    esac
+}
+
+function ECHO_VERSION () {
+    LANG
+    local DATA="$(CONFIG $MODDIR/.module.prop versionCode)"
+    echo -e "$TEXT_MOD_NAME:$TEXT_NERIBOX\n$TEXT_VERSION:"$(CONFIG $MODDIR/.module.prop version)"\n$TEXT_UPDATE_DATE:"${DATA:0:4}"$TEXT_YEAR"${DATA:4:2}"$TEXT_MONTH"${DATA:6:2}"$TEXT_DAY\n$TEXT_AUTHOR:"$(CONFIG $MODDIR/.module.prop author)""
+}
+
+function MKDIR () {
+    mkdir -p $UPDATEDIR
+    chmod 777 $NERIBOXDIR
+}
+
+function DASHBOARD () {
+    local STATUSBAR="$(CONFIG $CONFIG_PATH STATUSBAR)"
+    STATUS $STATUSBAR
+    local ENV=$(set|tr "\n" "*")
+    LANG
+    function PROGRAM_NAME () {
+    case "$1" in
+    ALIST)
+    echo AList
+    ;;
+    ARIA2)
+    echo Aria2
+    ;;
+    LIGHTTPD)
+    echo Lighttpd
+    ;;
+    RCLONE)
+    echo rclone
+    ;;
+    FRPC)
+    echo frpc
+    ;;
+    SQLITE)
+    echo sqlite
+    ;;
+    JQ)
+    echo jq
+    ;;
+    FUSERMOUNT)
+    echo fusermount
+    ;;
+    esac
+    }
+    function INFORMATION_ECHO () {
+    echo $ENV | tr "*" "\n" | $BUSYBOX_PATH grep "$1_$2" | awk -F "=" '{print $2}'
+    }
+    function INFORMATION_PRINT () {
+    while [ $# -gt 0 ]; do
+	case "$1" in
+	*)
+	    function INFORMATION () {
+	        local program=$1
+	        while [ $# -gt 1 ]; do
+	            case "$2" in
+	            DAEMON)
+                INFORMATION="${INFORMATION}|${TEXT_DAEMON}:$(INFORMATION_ECHO $program $2)"
+                shift
+	            ;;
+	            PID)
+	            INFORMATION="${INFORMATION}|${TEXT_PID}:$(INFORMATION_ECHO $program $2)"
+	            shift
+	            ;;
+                PORT)
+                INFORMATION="${INFORMATION}|${TEXT_PORT}:$(INFORMATION_ECHO $program $2)"
+                shift
+                ;;
+                VERSION)
+                INFORMATION="${INFORMATION}|${TEXT_VERSION}:$(INFORMATION_ECHO $program $2)"
+                shift
+                ;;
+                USER)
+                if [ "$program" = "ALIST" ];then
+                INFORMATION="${INFORMATION}|${TEXT_USER}:$(INFORMATION_ECHO $program $2)"
+                shift
+                fi
+                ;;
+                PASSWORD)
+                if [ "$program" = "ALIST" ];then
+                INFORMATION="${INFORMATION}|${TEXT_PASSWORD}:$(INFORMATION_ECHO $program $2)"
+                fi
+                shift
+                ;;
+                WEBUI)
+                if [ "$program" = "ARIA2" ];then
+                INFORMATION="${INFORMATION}|${TEXT_WEBUI}:$WEBUI"
+                fi
+                shift
+                ;;
+	            esac
+	        done
+	        }
+	    local program=$(echo $1|$BUSYBOX_PATH awk -F [ '{print $1}')
+	    INFORMATION="${INFORMATION}[$(PROGRAM_NAME $program)"
+	    INFORMATION $program $(echo $1|$BUSYBOX_PATH cut -d '[' -f2|$BUSYBOX_PATH cut -d ']' -f1|$BUSYBOX_PATH awk -F "," -v OFS=" " '{var=$1;$1=var;print $0}')
+	    INFORMATION="${INFORMATION}]"
+	shift
+	;;
+	esac
+    done
+    }
+    INFORMATION_PRINT $STATUSBAR
+    echo "$(cat $MODDIR/.module.prop)${INFORMATION}" > $MODDIR/module.prop
+}
+
+function HELP () {
+LANG
+case $1 in
+ALIST)
+local HELP="$TEXT_HELP_ALIST"
+;;
+ARIA2)
+local HELP="$TEXT_HELP_ARIA2"
+;;
+RCLONE)
+local HELP="$TEXT_HELP_RCLONE"
+;;
+FRPC)
+local HELP="$TEXT_HELP_FRPC"
+;;
+TRACKERLIST)
+local HELP="$TEXT_HELP_TRACKERLIST"
+;;
+DASHBOARD)
+local HELP="$TEXT_HELP_DASHBOARD"
+;;
+ALL)
+local HELP="$TEXT_HELP_ALIST\n$TEXT_HELP_ARIA2\n$TEXT_HELP_RCLONE\n$TEXT_HELP_FRPC\n$TEXT_HELP_TRACKERLIST\n$TEXT_HELP_DASHBOARD\n$TEXT_HELP_VERSION"
+;;
+esac
+echo -e $HELP
+}
+
+LOG () {
+    $@
+}
+
+function CONSOLE () {
+    function SORT_OPTION () {
+                for FLAG in $@;do
+                if [ "$EXTFLAG" = "true" ];then
+                local EXTFLAG=false && local FLAGS="$FLAGS $FLAG"
+                if [ "$FLAG" = "alist" -o "$FLAG" = "aria2" -o "$FLAG" = "rclone" -o "$FLAG" = "frpc" -o "$FLAG" = "trackerlist" -o "$FLAG" = "dashboard" ];then
+                SKIP_COMAND=true
+                fi
+                else
+                case $FLAG in
+                --REMOTE|--MOUNTDIR|--CLOUDDIR)
+                local FLAGS="$FLAGS $FLAG"
+                local EXTFLAG=true
+                ;;
+                alist|aria2|rclone|frpc|trackerlist|dashboard|-v)
+                break
+                ;;
+                *)
+                local FLAGS="$FLAGS $FLAG"
+                ;;
+                esac
+                fi
+                done
+                echo $FLAGS
+            }
+    function OPTION () {
+            OPTION=$($BUSYBOX_PATH getopt -o '' -l 'start,stop,mount,umount,update,config,help,REMOTE:,MOUNTDIR:,CLOUDDIR:' -- $@)
+            eval set -- "$OPTION"
+            while [ $# -gt 0 -a ! "$1" = "--" ];do
+            case $1 in
+            --start|--mount)
+            if [ "$program" = "ALIST" -o "$program" = "ARIA2" -o "$program" = "FRPC" ];then
+            LOG $program START
+            elif [ "$program" = "RCLONE" ];then
+            LOG $program MOUNT
+            fi
+            shift
+            ;;
+            --stop|--umount)
+            if [ "$program" = "ALIST" -o "$program" = "ARIA2" -o "$program" = "FRPC" ];then
+            LOG $program STOP
+            elif [ "$program" = "RCLONE" ];then
+            LOG $program UMOUNT
+            fi
+            shift
+            ;;
+            --update)
+            if [ "$program" = "ALIST" -o "$program" = "ARIA2" -o "$program" = "RCLONE" -o "$program" = "FRPC" -o "$program" = "TRACKERLIST" ];then
+            LOG $program UPDATE
+            fi
+            shift
+            ;;
+            --config)
+            if [ "$program" = "RCLONE" ];then
+            RCLONE CONFIG
+            fi
+            shift
+            ;;
+            --help)
+            HELP $program
+            shift
+            ;;
+            --REMOTE|--MOUNTDIR|--CLOUDDIR)
+            local FLAG=$1
+            eval local "${FLAG:2}"=$2
+            shift 2
+            ;;
+            esac
+        done
+    }
+    if [ "$#" = "0" -o "$1" = "--help" ];then
+    HELP ALL
+    if [ !"$#" = "0" ];then
+    shift
+    fi
+    fi
+    while [ $# -gt 0 ];do
+    case $1 in
+    alist|aria2|rclone|frpc|trackerlist)
+    if [ "$SKIP_COMAND" = "true" ];then
+    SKIP_COMAND=false
+    shift
+    else
+    local program=$(echo $1|tr 'a-z' 'A-Z')
+    shift
+    OPTION $(SORT_OPTION $@)
+    fi
+    ;;
+    dashboard)
+    if [ "$SKIP_COMAND" = "true" ];then
+    SKIP_COMAND=false
+    else
+    DASHBOARD
+    fi
+    shift
+    ;;
+    -v)
+    ECHO_VERSION
+    shift
+    ;;
+    *)
+    shift
+    ;;
+    esac
+    done
+}
+CONSOLE $@

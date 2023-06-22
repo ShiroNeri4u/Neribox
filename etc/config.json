@@ -1,0 +1,37 @@
+{
+  "force": false,
+  "address": "0.0.0.0",
+  "port": 5200,
+  "site_url": "",
+  "cdn": "",
+  "jwt_secret": "SzcAL7qWh188tLk9",
+  "token_expires_in": 48,
+  "database": {
+    "type": "sqlite3",
+    "host": "",
+    "port": 0,
+    "user": "",
+    "password": "",
+    "name": "",
+    "db_file": "/data/adb/modules/Neribox/etc/data.db",
+    "table_prefix": "x_",
+    "ssl_mode": ""
+  },
+  "scheme": {
+    "https": false,
+    "cert_file": "",
+    "key_file": ""
+  },
+  "temp_dir": "/data/adb/Neribox/temp",
+  "bleve_dir": "/data/adb/Neribox/bleve",
+  "log": {
+    "enable": true,
+    "name": "/data/adb/Neribox/AList.log",
+    "max_size": 10,
+    "max_backups": 5,
+    "max_age": 28,
+    "compress": false
+  },
+  "max_connections": 0,
+  "tls_insecure_skip_verify": true
+}

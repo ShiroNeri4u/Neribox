@@ -1,0 +1,23 @@
+--log-level NOTICE
+--vfs-cache-mode full
+--vfs-read-chunk-size 5M
+--vfs-cache-max-size 1G
+--cache-chunk-size 1M
+--cache-chunk-total-size 1G
+--cache-workers 1
+--cache-info-age 1h0m0s
+--dir-cache-time 30m0s
+--attr-timeout 30s
+--cache-chunk-no-memory
+--use-mmap
+--buffer-size 0
+--max-read-ahead 128k
+--no-modtime
+--no-checksum
+--uid 0
+--gid 1015
+--allow-other
+--dir-perms 0775
+--file-perms 0644
+--umask 002
+--allow-non-empty
