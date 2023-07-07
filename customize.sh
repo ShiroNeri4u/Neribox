@@ -1,7 +1,4 @@
 SKIPUNZIP=0
-set_perm_recursive $MODPATH/ 0 0 0755 0644
-chmod 744 $MODPATH/toolkit
-chmod 744 -R $MODPATH/common
 
 MODDIR=/data/adb/modules/Neribox
 if [ -f /data/adb/magisk/busybox ];then
@@ -29,6 +26,7 @@ if [ -f $MODPATH/酷安渠道.README ];then
     rm $MODPATH/酷安渠道.README
 fi
 
+mkdir -p $MODPATH/bin $MODPATH/lib $MODPATH/system/bin
 ARCH=$(getprop ro.product.cpu.abi)
 ui_print $TEXT_SOC_ARCH$ARCH
 if [ "$ARCH" = "arm64-v8a" ];then
@@ -41,6 +39,8 @@ else
 ui_print 没有当前架构的二进制文件
 fi
 rm -r $MODPATH/common
+
+set_perm_recursive $MODPATH/ 0 0 0755 0644
 
 #备份文件夹
 if [ -d $MODDIR ];then
