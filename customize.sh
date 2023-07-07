@@ -13,13 +13,24 @@ fi
 mkdir -p /data/adb/Neribox
 chmod 777 /data/adb/Neribox
 
+function LANG () {
+    local LANG=$(getprop | grep persist.sys.locale | grep -v persist.sys.localevar | $BUSYBOX_PATH awk '{print $2}')
+    local LANG=${LANG:1:5}
+    if [ -f $MODPATH/support-lang/$LANG.txt ];then
+        source $MODPATH/support-lang/$LANG.txt
+    else source $MODPATH/support-lang/zh-CN.txt
+    fi
+}
+
+LANG
+
 if [ -f $MODPATH/酷安渠道.README ];then
     ui_print $(cat $MODPATH/酷安渠道.README)
     rm $MODPATH/酷安渠道.README
 fi
 
 ARCH=$(getprop ro.product.cpu.abi)
-ui_print 当前soc架构为$ARCH
+ui_print $TEXT_SOC_ARCH$ARCH
 if [ "$ARCH" = "arm64-v8a" ];then
 mv $MODPATH/common/arm64/bin/* $MODPATH/bin
 mv $MODPATH/common/arm64/lib/* $MODPATH/lib
@@ -39,14 +50,14 @@ if [ -d $MODDIR ];then
     for i in ${DB_FILE_PATH} ${DB_FILE_PATH}-shm ${DB_FILE_PATH}-wal $MODDIR/etc/dht.dat $MODDIR/etc/dht6.dat $MODDIR/rclone.conf;do
         if [ -f $i ];then
         cp $i -rp $MODPATH/etc
-        ui_print 已备份$i
+        ui_print ${TEXT_BACKUP}${i}
         fi
     done
     if [ -f /data/adb/Neribox/backup.list ];then
     EXTBACKUPFILE=$(cat /data/adb/Neribox/backup.list | $BUSYBOX_PATH egrep "^file=" | $BUSYBOX_PATH sed -n 's/.*=//g;$p')
     for i in $EXTBACKUPFILE;do
     cp ${MODDIR}${i} -rp ${MODPATH}${i}
-    ui_print 已备份${MODDIR}${i}
+    ui_print ${TEXT_BACKUP}${MODDIR}${i}
     done
     fi
 fi
@@ -123,5 +134,9 @@ FRPC_PARM=$FRPC_PARM
 TERMUX_REPO=$TERMUX_REPO
 
 #tracker服务器订阅链接
-TRACKERLIST=$TRACKERLIST" > $CONFIG_PATH
+TRACKERLIST=$TRACKERLIST
+
+#Root管理器包名
+ROOT_MANAGER=$(dumpsys window | grep mCurrentFocus | awk '{print $3}' | awk -F / '{print $1}')
+" > $CONFIG_PATH
 ui_print "已生成配置文件"
