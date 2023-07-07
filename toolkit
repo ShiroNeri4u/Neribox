@@ -1,5 +1,5 @@
 #!/system/bin/sh
-#SU检测
+
 if [ -f /data/adb/magisk/busybox ];then
 BUSYBOX_PATH=/data/adb/magisk/busybox
 SU="magisk su -M -c"
@@ -9,7 +9,7 @@ SU="nsenter -t 1 -m --"
 fi
 
 MODDIR="$($BUSYBOX_PATH dirname "$(readlink -f "$0")")"
-#可执行文件路径
+
 EXE_DIR="$MODDIR/bin"
 LIB_DIR="$MODDIR/lib"
 ETC_DIR="$MODDIR/etc"
@@ -22,16 +22,16 @@ FRPC_PATH="$EXE_DIR/frpc"
 SQLITE_PATH="$EXE_DIR/sqlite3"
 JQ_PATH="$EXE_DIR/jq"
 FUSERMOUNT_PATH="$EXE_DIR/fusermount3"
-#工作路径
+
 NERIBOXDIR="/data/adb/Neribox"
 UPDATEDIR="$NERIBOXDIR/update-cache"
-#配置文件路径
+
 CONFIG_PATH="$NERIBOXDIR/config.ini"
 ALIST_CONFIG_PATH="$ETC_DIR/config.json"
 ARIA2_CONFIG_PATH="$ETC_DIR/aria2c.conf"
 RCLONE_CONFIG_PATH="$ETC_DIR/.rclone.conf"
 
-LANG () {
+function LANG () {
     local LANG=$(getprop | grep persist.sys.locale | grep -v persist.sys.localevar | $BUSYBOX_PATH awk '{print $2}')
     local LANG=${LANG:1:5}
     if [ -f $MODDIR/support-lang/$LANG.txt ];then
@@ -274,7 +274,7 @@ function ALIST () {
     done
     STATUS ALIST[PID]
     if [ "$ALIST_PID" = "✘" ];then
-        $ALIST_PATH start --data $ETC_DIR
+        $ALIST_PATH server --data $ETC_DIR &
         if [ "$(CONFIG $CONFIG_PATH ALIST_PROXY)" = "true" ];then
             LIGHTTPD START &
         fi
@@ -283,7 +283,7 @@ function ALIST () {
     STOP)
     STATUS ALIST[PID]
     if [ ! "$ALIST_PID" = "✘" ];then
-        $ALIST_PATH stop
+        kill -9 $ALIST_PID
     fi
         LIGHTTPD STOP &
     ;;
@@ -714,9 +714,8 @@ function CONSOLE () {
                 echo $FLAGS
             }
     function OPTION () {
-            OPTION=$($BUSYBOX_PATH getopt -o '' -l 'start,stop,mount,umount,update,config,help,REMOTE:,MOUNTDIR:,CLOUDDIR:' -- $@)
-            eval set -- "$OPTION"
-            while [ $# -gt 0 -a ! "$1" = "--" ];do
+            eval set -- "$@"
+            while [ $# -gt 0 ];do
             case $1 in
             --start|--mount)
             if [ "$program" = "ALIST" -o "$program" = "ARIA2" -o "$program" = "FRPC" ];then
