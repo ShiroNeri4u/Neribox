@@ -32,6 +32,6 @@ TEXT_HELP_ALIST="alist\n\t--start 启动AList\n\t--stop 关闭AList\n\t--update 
 TEXT_HELP_ARIA2="aria2\n\t--start 启动Aria2\n\t--stop 关闭Aria2\n\t--update 从github更新Aria2"
 TEXT_HELP_RCLONE="rclone\n\t--mount 挂载rclone\n\t\t--MOUNTDIR [/DIR] 挂载本地的路径\n\t\t--CLOUDDIR [/DIR] 挂载云盘的路径\n\t\t--REMOTE [/NAME] 挂载项目的名称\n\t--umount 卸载rclone\n\t\t--REMOTE [/NAME] 卸载项目的名称\n\t--update 更新rclone\n\t--config 手动配置rclone"
 TEXT_HELP_FRPC="frpc\n\t--start 启动frpc\n\t--stop 关闭frpc\n\t--update 从github更新frpc"
-TEXT_HELP_TRACKERLIST="trackerlist\n\tupdate 更新tracker服务器"
+TEXT_HELP_TRACKERLIST="trackerlist\n\t--update 更新tracker服务器"
 TEXT_HELP_DASHBOARD="dashboard\n\t无 刷新模块运行状态"
 TEXT_HELP_VERSION="-v\n\t无 查看模块信息"

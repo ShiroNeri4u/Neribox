@@ -28,7 +28,7 @@ fi
 
 mkdir -p $MODPATH/bin $MODPATH/lib $MODPATH/system/bin
 ARCH=$(getprop ro.product.cpu.abi)
-ui_print $TEXT_SOC_ARCH$ARCH
+ui_print "- $TEXT_SOC_ARCH$ARCH"
 if [ "$ARCH" = "arm64-v8a" ];then
 mv $MODPATH/common/arm64/bin/* $MODPATH/bin
 mv $MODPATH/common/arm64/lib/* $MODPATH/lib
@@ -36,7 +36,7 @@ elif [ "$ARCH" = "armeabi-v7a" ];then
 mv $MODPATH/common/arm/bin/* $MODPATH/bin
 mv $MODPATH/common/arm/lib/* $MODPATH/lib
 else
-ui_print 没有当前架构的二进制文件
+ui_print "- 没有当前架构的二进制文件"
 fi
 rm -r $MODPATH/common
 
@@ -51,14 +51,14 @@ if [ -d $MODDIR ];then
     for i in ${DB_FILE_PATH} ${DB_FILE_PATH}-shm ${DB_FILE_PATH}-wal $MODDIR/etc/dht.dat $MODDIR/etc/dht6.dat $MODDIR/rclone.conf;do
         if [ -f $i ];then
         cp $i -rp $MODPATH/etc
-        ui_print ${TEXT_BACKUP}${i}
+        ui_print "- ${TEXT_BACKUP}${i}"
         fi
     done
     if [ -f /data/adb/Neribox/backup.list ];then
     EXTBACKUPFILE=$(cat /data/adb/Neribox/backup.list | $BUSYBOX_PATH egrep "^file=" | $BUSYBOX_PATH sed -n 's/.*=//g;$p')
     for i in $EXTBACKUPFILE;do
     cp ${MODDIR}${i} -rp ${MODPATH}${i}
-    ui_print ${TEXT_BACKUP}${MODDIR}${i}
+    ui_print "- ${TEXT_BACKUP}${MODDIR}${i}"
     done
     fi
 fi
@@ -140,4 +140,5 @@ TRACKERLIST=$TRACKERLIST
 #Root管理器包名
 ROOT_MANAGER=$(dumpsys window | grep mCurrentFocus | awk '{print $3}' | awk -F / '{print $1}')
 " > $CONFIG_PATH
-ui_print "已生成配置文件"
+ui_print "- 已生成配置文件"
+ui_print "- 你的root管理器包名$(dumpsys window | grep mCurrentFocus | awk '{print $3}' | awk -F / '{print $1}')，若不对在配置文件中修改"

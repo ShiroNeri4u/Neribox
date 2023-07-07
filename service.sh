@@ -26,7 +26,7 @@ fi
 function DASHBOARD_DAEMON () {
     local ROOT_MANAGER=$(CONFIG $CONFIG_PATH ROOT_MANAGER)
     while true;do
-        if [ "$(dumpsys deviceidle get screen)" = "true" -a "$(dumpsys window | grep mCurrentFocus | awk '{print $3}' | awk -F / '{print $1}')" = "$ROOT_MANAGER" -a "$(CONFIG $CONFIG_PATH DASHBOARD)" = "true"  ];then
+        if [ "$(dumpsys deviceidle get screen)" = "true" -a -n "$(dumpsys window | grep mCurrentFocus | awk '{print $3}' | awk -F / '{print $1}' | grep "$ROOT_MANAGER" )" -a "$(CONFIG $CONFIG_PATH DASHBOARD)" = "true"  ];then
         /system/bin/sh $MODDIR/toolkit dashboard
         fi
     sleep 3
@@ -68,6 +68,7 @@ fi
 }
 
 function KEEP_DAEMON () {
+    while true;do
         local ALIST_PID="$($BUSYBOX_PATH ps | grep "$MODDIR/bin/alist server --data $ETC_DIR" | grep -v "grep" | $BUSYBOX_PATH awk '{print $1}')"
         local ARIA2_PID="$($BUSYBOX_PATH ps | grep "$MODDIR/bin/aria2c -m $LIBDIR --conf-path=$ARIA2_CONFIG_PATH -D" | grep -v "grep" | $BUSYBOX_PATH awk '{print $1}')"
         local RCLONE_PID="$($BUSYBOX_PATH ps | grep "$MODDIR/bin/rclone mount" | grep -v "grep" | $BUSYBOX_PATH awk '{print $1}')"
@@ -77,6 +78,7 @@ function KEEP_DAEMON () {
         RCLONE_DAEMON
         FRPC_DAEMON
         sleep 3
+    done
 }
 
 function PRO () {

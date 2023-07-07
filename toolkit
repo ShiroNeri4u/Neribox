@@ -693,8 +693,8 @@ function CONSOLE () {
                 for FLAG in $@;do
                 if [ "$EXTFLAG" = "true" ];then
                 local EXTFLAG=false && local FLAGS="$FLAGS $FLAG"
-                if [ "$FLAG" = "alist" -o "$FLAG" = "aria2" -o "$FLAG" = "rclone" -o "$FLAG" = "frpc" -o "$FLAG" = "trackerlist" -o "$FLAG" = "dashboard" ];then
-                SKIP_COMAND=true
+                if [ "$FLAG" = "alist" -o "$FLAG" = "aria2" -o "$FLAG" = "rclone" -o "$FLAG" = "frpc" -o "$FLAG" = "trackerlist" -o "$FLAG" = "dashboard" -o "$FLAG" = "-v" ];then
+                SKIP_COMMAND=true
                 fi
                 else
                 case $FLAG in
@@ -714,7 +714,6 @@ function CONSOLE () {
                 echo $FLAGS
             }
     function OPTION () {
-            eval set -- "$@"
             while [ $# -gt 0 ];do
             case $1 in
             --start|--mount)
@@ -754,20 +753,23 @@ function CONSOLE () {
             eval local "${FLAG:2}"=$2
             shift 2
             ;;
+            *)
+            shift
+            ;;
             esac
         done
     }
     if [ "$#" = "0" -o "$1" = "--help" ];then
     HELP ALL
-    if [ !"$#" = "0" ];then
+    if [ ! "$#" = "0" ];then
     shift
     fi
     fi
     while [ $# -gt 0 ];do
     case $1 in
     alist|aria2|rclone|frpc|trackerlist)
-    if [ "$SKIP_COMAND" = "true" ];then
-    SKIP_COMAND=false
+    if [ "$SKIP_COMMAND" = "true" ];then
+    SKIP_COMMAND=false
     shift
     else
     local program=$(echo $1|tr 'a-z' 'A-Z')
@@ -776,16 +778,22 @@ function CONSOLE () {
     fi
     ;;
     dashboard)
-    if [ "$SKIP_COMAND" = "true" ];then
-    SKIP_COMAND=false
+    if [ "$SKIP_COMMAND" = "true" ];then
+    SKIP_COMMAND=false
+    shift
     else
     DASHBOARD
     fi
     shift
     ;;
     -v)
+    if [ "$SKIP_COMMAND" = "true" ];then
+    SKIP_COMMAND=false
+    shift
+    else
     ECHO_VERSION
     shift
+    fi
     ;;
     *)
     shift
