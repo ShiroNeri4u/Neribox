@@ -41,6 +41,7 @@ fi
 rm -r $MODPATH/common
 
 set_perm_recursive $MODPATH/ 0 0 0755 0644
+chmod 755 $MODPATH/bin/*
 
 #备份文件夹
 if [ -d $MODDIR ];then
