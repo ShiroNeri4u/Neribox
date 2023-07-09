@@ -192,14 +192,12 @@ function STATUS () {
         else echo "${PROGRAM}_VERSION=$VERSION"
         fi
     }
-    function USERANDPASSWORD () {
+    function USER_PASSWORD () {
         local TYPE=$1
         local DB_FILE_PATH=$(cat $ALIST_CONFIG_PATH | $JQ_PATH .database.db_file | $BUSYBOX_PATH sed 's/"//g' )
             if [ -f $DB_FILE_PATH ];then
                 local TABLE_PREFIX=$(cat $ALIST_CONFIG_PATH | $JQ_PATH .database.table_prefix | $BUSYBOX_PATH sed 's/"//g')users
-                local USER_INFO=$($SQLITE_PATH $DB_FILE_PATH <<EOF
-SELECT *FROM $TABLE_PREFIX where role like "2";
-EOF)
+                local USER_INFO=$($SQLITE_PATH $DB_FILE_PATH "SELECT *FROM $TABLE_PREFIX where role like 2")
             fi
         case $TYPE in
         USER)
@@ -240,7 +238,7 @@ EOF)
                 ;;
                 USER|PASSWORD)
                 if [ "$program" = "ALIST" ];then
-                eval $(USERANDPASSWORD $2 &)
+                eval $(USER_PASSWORD $2 &)
                 fi
                 shift
                 ;;
@@ -288,7 +286,7 @@ function ALIST () {
         LIGHTTPD STOP &
     ;;
     UPDATE)
-    DOWNLOAD () {
+    function DOWNLOAD () {
         MKDIR
         GETARCH
         local PACK="alist_"$VERSION_UPDATE"_"$ALIST_ARCH".deb"
@@ -340,7 +338,7 @@ function ARIA2 () {
         LIGHTTPD STOP &
     ;;
     UPDATE)
-    DOWNLOAD () {
+    function DOWNLOAD () {
         MKDIR
         PACK="aria2-"$VERSION_UPDATE"-aarch64-linux-android-build1"
         curl -# -LJo $UPDATEDIR/$PACK.zip https://github.com/aria2/aria2/releases/download/release-"$VERSION_UPDATE"/"$PACK".zip && $BUSYBOX_PATH unzip -d $UPDATEDIR -o -q $UPDATEDIR/$PACK.zip && mv -f $UPDATEDIR/$PACK/aria2c $ARIA2_PATH && chown root:root $ARIA2_PATH && chmod 744 $ARIA2_PATH
@@ -428,7 +426,7 @@ function RCLONE () {
         fi
 
         PARM="$(cat $PARM_FILE | $BUSYBOX_PATH sed '/--config/d;/--log-file/d;/--cache-dir/d;/--cache-chunk-path/d;/--cache-db-path/d;/--cache-tmp-upload-path/d;/--daemon/d;' | $BUSYBOX_PATH sed 's/^[ \t]*//g' | $BUSYBOX_PATH sed 's/[ \t]*$//g' | $BUSYBOX_PATH tr -s "\r\n" " ")"
-        if [ -n "$REMOTE ];then
+        if [ -n "$REMOTE" ];then
         local RCLONE_CONFIG_PATH=$ETC_DIR/rclone.conf
         fi
 
@@ -475,7 +473,7 @@ function RCLONE () {
         $RCLONE_PATH config --config $ETC_DIR/rclone.conf
     ;;
     UPDATE)
-    DOWNLOAD () {
+    function DOWNLOAD () {
         MKDIR
         GETARCH
         PACK="rclone-android-21-"$RCLONE_ARCH""
@@ -523,7 +521,7 @@ function FRPC () {
     fi
     ;;
     UPDATE)
-    DOWNLOAD () {
+    function DOWNLOAD () {
         MKDIR
         GETARCH
         PACK="frp_"$VERSION_UPDATE"_linux_"$FRPC_ARCH""
