@@ -392,16 +392,13 @@ function LIGHTTPD () {
 function RCLONE () {
     case $1 in
     MOUNT)
-    if [ -z "$REMOTE" ];then
-        local REMOTE="AList"
-    fi
     if [ -z "$MOUNTDIR" ];then
         local MOUNTDIR="$(CONFIG $CONFIG_PATH MOUNTDIR)"
     fi
     if [ -z "$CLOUDDIR" ];then
         local CLOUDDIR="$(CONFIG $CONFIG_PATH CLOUDDIR)"
     fi
-    if [ "$REMOTE" = "AList" ];then
+    if [ -z "$REMOTE" ];then
     STATUS ALIST[PID,PORT,USER,PASSWORD]
         if [ "$ALIST_PORT" = "✘" ];then
         local PORT=$(cat $ALIST_CONFIG_PATH | $JQ_PATH .port | $BUSYBOX_PATH sed 's/"//g')
@@ -410,8 +407,13 @@ function RCLONE () {
         CONFIG $RCLONE_CONFIG_PATH "user " " $ALIST_USER"
         $RCLONE_PATH config password AList pass "$ALIST_PASSWORD" --config "$RCLONE_CONFIG_PATH" >/dev/null 2>&1
     fi
-    if [ ! "$REMOTE" = "AList" -o ! "$ALIST_PID" = "✘" ];then
-        mkdir -p $NERIBOXDIR/Cloud/$REMOTE $NERIBOXDIR/temp $NERIBOXDIR/temp/cache-backend /data/media/0/$MOUNTDIR
+    if [ -z "$REMOTE" -a ! "$ALIST_PID" = "✘" ] || [ -n "$REMOTE" ];then
+        if [ -z "$REMOTE" ];then
+        mkdir -p $NERIBOXDIR/Cloud/.AList
+        elif [ -n "$REMOTE" ];then
+        mkdir -p $NERIBOXDIR/Cloud/$REMOTE
+        fi
+        mkdir -p $NERIBOXDIR/temp $NERIBOXDIR/temp/cache-backend /data/media/0/$MOUNTDIR
         touch $NERIBOXDIR/Cloud/.nomedia
         chown root:sdcard_rw $NERIBOXDIR/Cloud/.nomedia
         chmod 0644 $NERIBOXDIR/Cloud/.nomedia
@@ -424,16 +426,27 @@ function RCLONE () {
         if [ ! -f $PARM_FILE ];then
         local PARM_FILE=$ETC_DIR/Default.parm
         fi
+
         PARM="$(cat $PARM_FILE | $BUSYBOX_PATH sed '/--config/d;/--log-file/d;/--cache-dir/d;/--cache-chunk-path/d;/--cache-db-path/d;/--cache-tmp-upload-path/d;/--daemon/d;' | $BUSYBOX_PATH sed 's/^[ \t]*//g' | $BUSYBOX_PATH sed 's/[ \t]*$//g' | $BUSYBOX_PATH tr -s "\r\n" " ")"
-        if [ ! "$REMOTE" = "AList" ];then
+        if [ -n "$REMOTE ];then
         local RCLONE_CONFIG_PATH=$ETC_DIR/rclone.conf
         fi
+
+        if [ -z "$REMOTE" ];then
+        $SU nice -n 19 ionice -c 2 -n 7 $RCLONE_PATH mount "AList:"$CLOUDDIR"" "$NERIBOXDIR/Cloud/.AList" --config "$RCLONE_CONFIG_PATH" --log-file "$NERIBOXDIR/log.txt" --cache-dir "$NERIBOXDIR/temp" --cache-chunk-path "$NERIBOXDIR/temp/cache-backend" --cache-db-path "$NERIBOXDIR/temp/cache-backend" --cache-tmp-upload-path "$NERIBOXDIR/temp" $PARM --daemon &
+        elif [ -n "$REMOTE" ];then
         $SU nice -n 19 ionice -c 2 -n 7 $RCLONE_PATH mount ""$REMOTE":"$CLOUDDIR"" "$NERIBOXDIR/Cloud/$REMOTE" --config "$RCLONE_CONFIG_PATH" --log-file "$NERIBOXDIR/log.txt" --cache-dir "$NERIBOXDIR/temp" --cache-chunk-path "$NERIBOXDIR/temp/cache-backend" --cache-db-path "$NERIBOXDIR/temp/cache-backend" --cache-tmp-upload-path "$NERIBOXDIR/temp" $PARM --daemon &
+        fi
+
         local MNTDIR="($(find /mnt -maxdepth 4 -name emulated | grep -v pass_through) /storage/emulated)"
         for i in ${MNTDIR[@]};do
             if [ -e "$i/0" ];then
                 chown media_rw:media_rw "$i/0/$MOUNTDIR"
+                if [ -z "$REMOTE" ];then
+                $SU mount --bind $NERIBOXDIR/Cloud/.AList $i/0/$MOUNTDIR
+                elif [ -n "$REMOTE" ];then
                 $SU mount --bind $NERIBOXDIR/Cloud/$REMOTE $i/0/$MOUNTDIR
+                fi
                 if [ -n "$($SU mount | grep /storage/emulated/0/$MOUNTDIR | grep fuse.rclone)" ];then
                     break
                 fi
