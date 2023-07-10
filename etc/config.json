@@ -25,7 +25,7 @@
   "temp_dir": "/data/adb/Neribox/temp",
   "bleve_dir": "/data/adb/Neribox/bleve",
   "log": {
-    "enable": true,
+    "enable": false,
     "name": "/data/adb/Neribox/log.txt",
     "max_size": 10,
     "max_backups": 5,

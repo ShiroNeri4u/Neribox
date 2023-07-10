@@ -172,7 +172,7 @@ function STATUS () {
         local VERSION=$($LIGHTTPD_PATH -v | $BUSYBOX_PATH egrep '^lighttpd' | $BUSYBOX_PATH awk '{print $1}' | $BUSYBOX_PATH sed s/[a-zA-Z/]//g )
         ;;
         RCLONE)
-        local VERSION=$($RCLONE_PATH version | $BUSYBOX_PATH egrep '^rclone' | $BUSYBOX_PATH awk '{print $2}' | $BUSYBOX_PATH cut -d - -f 1 | $BUSYBOX_PATH sed s/v//g )
+        local VERSION=$($RCLONE_PATH version | $BUSYBOX_PATH egrep '^rclone' | $BUSYBOX_PATH awk '{print $2}' | $BUSYBOX_PATH sed s/v//g )
         ;;
         FRPC)
         local VERSION=$($FRPC_PATH -v | $BUSYBOX_PATH awk -F "-" '{print $1}' )
@@ -192,7 +192,7 @@ function STATUS () {
         else echo "${PROGRAM}_VERSION=$VERSION"
         fi
     }
-    function USER_PASSWORD () {
+    function USERANDPASSWORD () {
         local TYPE=$1
         local DB_FILE_PATH=$(cat $ALIST_CONFIG_PATH | $JQ_PATH .database.db_file | $BUSYBOX_PATH sed 's/"//g' )
             if [ -f $DB_FILE_PATH ];then
@@ -238,7 +238,7 @@ function STATUS () {
                 ;;
                 USER|PASSWORD)
                 if [ "$program" = "ALIST" ];then
-                eval $(USER_PASSWORD $2 &)
+                eval $(USERANDPASSWORD $2 &)
                 fi
                 shift
                 ;;
@@ -477,12 +477,12 @@ function RCLONE () {
         MKDIR
         GETARCH
         PACK="rclone-android-21-"$RCLONE_ARCH""
-        curl -# -LJo $UPDATEDIR/$PACK.gz https://beta.rclone.org/test/testbuilds-latest/$PACK.gz && $BUSYBOX_PATH gzip -d $UPDATEDIR/$PACK.gz && mv -f $UPDATEDIR/$PACK $RCLONE_PATH && chown root:root $RCLONE_PATH && chmod 744 $RCLONE_PATH
+        curl -# -LJo $UPDATEDIR/$PACK.gz https://beta.rclone.org/v$VERSION_UPDATE/testbuilds/$PACK.gz && $BUSYBOX_PATH gzip -d $UPDATEDIR/$PACK.gz && mv -f $UPDATEDIR/$PACK $RCLONE_PATH && chown root:root $RCLONE_PATH && chmod 744 $RCLONE_PATH
     }
-    local VERSION_UPDATE="$(curl -fsS https://beta.rclone.org/version.txt | $BUSYBOX_PATH awk -F . '{print $4}' )"
+    local VERSION_UPDATE="$($BUSYBOX_PATH wget -qO- -t1 -T2 --no-check-certificate "https://api.github.com/repos/rclone/rclone/releases/latest" | $JQ_PATH -r '.tag_name' | $BUSYBOX_PATH sed s/"v"//g)"
     if [ -n "$VERSION_UPDATE" ];then
-        local RCLONE_VERSION="$($RCLONE_PATH version | $BUSYBOX_PATH egrep '^rclone' | $BUSYBOX_PATH awk '{print $2}' | $BUSYBOX_PATH awk -F . '{print $4}')"
-        if [ -n "$RCLONE_VERSION" ];then
+        STATUS RCLONE[VERSION]
+        if [ ! "$RCLONE_VERSION" = "✘" ];then
         case "$(VERSION_SORT $RCLONE_VERSION $VERSION_UPDATE)" in
         DOWNLOAD)
         DOWNLOAD
@@ -492,7 +492,7 @@ function RCLONE () {
         echo NEW
         ;;
         esac
-        elif [ -z "$RCLONE_VERSION" ];then
+        elif [ "$RCLONE_VERSION" = "✘" ];then
         DOWNLOAD
         echo DOWNLOAD
         fi
