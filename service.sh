@@ -11,6 +11,7 @@ ETC_DIR="$MODDIR/etc"
 ARIA2_CONFIG_PATH="$MODDIR/etc/aria2c.conf"
 
 NERIBOXDIR="/data/adb/Neribox"
+UPDATEDIR="$NERIBOXDIR/update-cache"
 CONFIG_PATH="$NERIBOXDIR/config.ini"
 
 function CONFIG () {
@@ -81,7 +82,7 @@ function KEEP_DAEMON () {
     done
 }
 
-function PRO () {
+function AOD_DAEMON () {
 while true;do
 local STOPPED=false
     while [ "$(dumpsys deviceidle get screen)" = "false" ];do
@@ -117,6 +118,13 @@ local STOPPED=false
 done
 }
 
+function CLEAN_TMPFILE () {
+    while true;do
+    find $UPDATEDIR -type f -mmin +10 -exec rm {} \;
+    sleep 600
+    done
+}
+
 DASHBOARD_DAEMON &
 KEEP_DAEMON &
-PRO
+AOD_DAEMON &
