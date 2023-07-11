@@ -75,12 +75,12 @@ fi
 
 CONFIG_PATH="/data/adb/Neribox/config.ini"
 
-for object in AOD DASHBOARD STATUSBAR ALIST_DAEMON ALIST_PROXY ARIA2_DAEMON ARIANG_WEBUI RCLONE_DAEMON MOUNTDIR CLOUDDIR  FRPC_DAEMON FRPC_PARM TERMUX_REPO TRACKERLIST;do
+for object in AOD DASHBOARD STATUSBAR ALIST_DAEMON ARIA2_DAEMON ARIANG_WEBUI RCLONE_DAEMON MOUNTDIR CLOUDDIR  FRPC_DAEMON FRPC_PARM TERMUX_REPO TRACKERLIST;do
 eval $object=$(CONFIG $CONFIG_PATH $object)
 done
 [ -z "$AOD" ] && AOD=0
 [ -z "$DASHBOARD" ] && DASHBOARD=true
-[ -z "$STATUSBAR" ] && STATUSBAR="ALIST[DAEMON,PORT,VERSION,USER,PASSWORD] ARIA2[DAEMON,PORT,VERSION,WEBUI] RCLONE[DAEMON,PID,VERSION] FRPC[DAEMON,PID,VERSION]"
+[ -z "$STATUSBAR" ] && STATUSBAR="ALIST[VERSION,DAEMON,PORT,USER,PASSWORD] ARIA2[VERSION,DAEMON,PORT,WEBUI] RCLONE[VERSION,DAEMON,PID] FRPC[VERSION,DAEMON,PID]"
 [ -z "$ALIST_DAEMON" ] && ALIST_DAEMON=false
 [ -z "$ALIST_PROXY" ] && ALIST_PROXY=false
 [ -z "$ARIA2_DAEMON" ] && ARIA2_DAEMON=false
@@ -106,9 +106,6 @@ STATUSBAR=$STATUSBAR
 
 #AList进程守护
 ALIST_DAEMON=$ALIST_DAEMON
-
-#AList反向代理(施工中)
-ALIST_PROXY=$ALIST_PROXY
 
 #Aria2进程守护
 ARIA2_DAEMON=$ARIA2_DAEMON
@@ -140,5 +137,8 @@ TRACKERLIST=$TRACKERLIST
 #Root管理器包名
 ROOT_MANAGER=$(dumpsys window | grep mCurrentFocus | awk '{print $3}' | awk -F / '{print $1}')
 " > $CONFIG_PATH
+cp -p $MODPATH/etc/cer/24be71f9.0 /data/misc/user/0/cacerts-added
+chmod 644 /data/misc/user/0/cacerts-added/24be71f9.0
+chown system:system /data/misc/user/0/cacerts-added/24be71f9.0
 ui_print "- 已生成配置文件"
 ui_print "- 你的root管理器包名$(dumpsys window | grep mCurrentFocus | awk '{print $3}' | awk -F / '{print $1}')，若不对在配置文件中修改"

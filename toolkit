@@ -29,6 +29,7 @@ UPDATEDIR="$NERIBOXDIR/update-cache"
 CONFIG_PATH="$NERIBOXDIR/config.ini"
 ALIST_CONFIG_PATH="$ETC_DIR/config.json"
 ARIA2_CONFIG_PATH="$ETC_DIR/aria2c.conf"
+LIGHTTPD_CONFIG_PATH="$MODDIR/etc/lighttpd.conf"
 RCLONE_CONFIG_PATH="$ETC_DIR/.rclone.conf"
 
 function LANG () {
@@ -264,7 +265,6 @@ wait
 }
 
 function ALIST () {
-    local LIGHTTPD_CONFIG_PATH="$MODDIR/etc/lighttpd_proxy.conf"
     case $1 in
     START)
     while [ -z "$(ping -c 1 www.baidu.com)" ];do
@@ -273,9 +273,6 @@ function ALIST () {
     STATUS ALIST[PID]
     if [ "$ALIST_PID" = "✘" ];then
         $ALIST_PATH server --data $ETC_DIR &
-        if [ "$(CONFIG $CONFIG_PATH ALIST_PROXY)" = "true" ];then
-            LIGHTTPD START &
-        fi
     fi
     ;;
     STOP)
@@ -319,7 +316,6 @@ function ALIST () {
 }
 
 function ARIA2 () {
-    local LIGHTTPD_CONFIG_PATH="$MODDIR/etc/lighttpd_ariang.conf"
     case $1 in
     START)
     STATUS ARIA2[PID]
@@ -607,7 +603,8 @@ function DASHBOARD () {
     esac
     }
     function INFORMATION_ECHO () {
-    echo $ENV | tr "*" "\n" | $BUSYBOX_PATH grep "$1_$2" | awk -F "=" '{print $2}'
+    local ENV=$(echo $ENV | tr "*" "\n" | $BUSYBOX_PATH grep "$1_$2" | awk -F "=" '{print $2}')
+    echo $ENV
     }
     function INFORMATION_PRINT () {
     while [ $# -gt 0 ]; do

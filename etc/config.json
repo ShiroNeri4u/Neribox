@@ -1,10 +1,8 @@
 {
   "force": false,
-  "address": "0.0.0.0",
-  "port": 5200,
   "site_url": "",
   "cdn": "",
-  "jwt_secret": "SzcAL7qWh188tLk9",
+  "jwt_secret": "OaaX8fmNG6Xsxdho",
   "token_expires_in": 48,
   "database": {
     "type": "sqlite3",
@@ -18,9 +16,13 @@
     "ssl_mode": ""
   },
   "scheme": {
-    "https": false,
-    "cert_file": "",
-    "key_file": ""
+    "address": "0.0.0.0",
+    "http_port": 80,
+    "https_port": 443,
+    "force_https": true,
+    "cert_file": "/data/adb/modules/Neribox/etc/cer/certificate.pem",
+    "key_file": "/data/adb/modules/Neribox/etc/cer/key.pem",
+    "unix_file": ""
   },
   "temp_dir": "/data/adb/Neribox/temp",
   "bleve_dir": "/data/adb/Neribox/bleve",
@@ -32,6 +34,7 @@
     "max_age": 28,
     "compress": false
   },
+  "delayed_start": 0,
   "max_connections": 0,
   "tls_insecure_skip_verify": true
 }
