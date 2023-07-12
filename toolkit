@@ -13,6 +13,7 @@ MODDIR="$($BUSYBOX_PATH dirname "$(readlink -f "$0")")"
 EXE_DIR="$MODDIR/bin"
 LIB_DIR="$MODDIR/lib"
 ETC_DIR="$MODDIR/etc"
+CER_DIR="$ETC_DIR/certificate"
 PATH=$PATH:$EXE_DIR
 ALIST_PATH="$EXE_DIR/alist"
 ARIA2_PATH="$EXE_DIR/aria2c"
@@ -21,6 +22,7 @@ RCLONE_PATH="$EXE_DIR/rclone"
 FRPC_PATH="$EXE_DIR/frpc"
 SQLITE_PATH="$EXE_DIR/sqlite3"
 JQ_PATH="$EXE_DIR/jq"
+OPENSSL_PATH="$EXE_DIR/openssl"
 FUSERMOUNT_PATH="$EXE_DIR/fusermount3"
 
 NERIBOXDIR="/data/adb/Neribox"
@@ -122,6 +124,9 @@ function STATUS () {
     	;;
         FUSERMOUNT)
     	local PID="$($BUSYBOX_PATH ps | grep $FUSERMOUNT_PATH | grep -v -e "grep" -e "-V" | $BUSYBOX_PATH awk '{print $1}')"
+    	;;
+    	OPENSSL)
+    	local PID="$($BUSYBOX_PATH ps | grep $OPENSSL_PATH | grep -v -e "grep" -e "version" | $BUSYBOX_PATH awk '{print $1}')"
         ;;
         esac
         if [ ! "$2" = "PID" ];then
@@ -187,6 +192,9 @@ function STATUS () {
         FUSERMOUNT)
         local VERSION=$($FUSERMOUNT_PATH -V | $BUSYBOX_PATH sed -n 's/.*: //g;$p' )
         ;;
+        OPENSSL)
+        local VERSION=$($OPENSSL_PATH version | awk '{print $2}' )
+        ;;
         esac
         if [ -z "$VERSION" ];then
             echo "${PROGRAM}_VERSION=✘"
@@ -195,7 +203,7 @@ function STATUS () {
     }
     function USERANDPASSWORD () {
         local TYPE=$1
-        local DB_FILE_PATH=$(cat $ALIST_CONFIG_PATH | $JQ_PATH .database.db_file | $BUSYBOX_PATH sed 's/"//g' )
+        local DB_FILE_PATH=$($JQ_PATH '.database.db_file' $ALIST_CONFIG_PATH| $BUSYBOX_PATH sed 's/"//g' )
             if [ -f $DB_FILE_PATH ];then
                 local TABLE_PREFIX=$(cat $ALIST_CONFIG_PATH | $JQ_PATH .database.table_prefix | $BUSYBOX_PATH sed 's/"//g')users
                 local USER_INFO=$($SQLITE_PATH $DB_FILE_PATH "SELECT *FROM $TABLE_PREFIX where role like 2")
@@ -397,7 +405,20 @@ function RCLONE () {
         if [ "$ALIST_PORT" = "✘" ];then
         local PORT=$(cat $ALIST_CONFIG_PATH | $JQ_PATH .port | $BUSYBOX_PATH sed 's/"//g')
         fi
-        CONFIG $RCLONE_CONFIG_PATH "url " " http://127.0.0.1:"$ALIST_PORT"/dav"
+        for PORT in ${ALIST_PORT[@]};do
+        if [ -n "$($OPENSSL_PATH s_client -connect 0.0.0.0:$PORT 2>/dev/null < $MODDIR/.module.prop | grep "Server certificate")" ];then
+        CONFIG $RCLONE_CONFIG_PATH "url " " https://localhost:"$PORT"/dav"
+        local HAVE_HTTPS=true
+        break
+        fi
+        done
+        if [ -z local HAVE_HTTPS=true ];then
+            for PORT in ${ALIST_PORT[@]};do
+            if [ -z "$($OPENSSL_PATH s_client -connect 0.0.0.0:PORT 2>/dev/null < $MODDIR/.module.prop | grep "Server certificate")" ];then
+            CONFIG $RCLONE_CONFIG_PATH "url " " http://localhost:"$PORT"/dav"
+            fi
+            done
+        fi
         CONFIG $RCLONE_CONFIG_PATH "user " " $ALIST_USER"
         $RCLONE_PATH config password AList pass "$ALIST_PASSWORD" --config "$RCLONE_CONFIG_PATH" >/dev/null 2>&1
     fi
@@ -421,15 +442,15 @@ function RCLONE () {
         local PARM_FILE=$ETC_DIR/Default.parm
         fi
 
-        PARM="$(cat $PARM_FILE | $BUSYBOX_PATH sed '/--config/d;/--log-file/d;/--cache-dir/d;/--cache-chunk-path/d;/--cache-db-path/d;/--cache-tmp-upload-path/d;/--daemon/d;' | $BUSYBOX_PATH sed 's/^[ \t]*//g' | $BUSYBOX_PATH sed 's/[ \t]*$//g' | $BUSYBOX_PATH tr -s "\r\n" " ")"
+        PARM="$(cat $PARM_FILE | $BUSYBOX_PATH sed '/--config/d;/--log-file/d;/--cache-dir/d;/--cache-chunk-path/d;/--cache-db-path/d;/--cache-tmp-upload-path/d;/--no-check-certificate/d;/--daemon/d;' | $BUSYBOX_PATH sed 's/^[ \t]*//g' | $BUSYBOX_PATH sed 's/[ \t]*$//g' | $BUSYBOX_PATH tr -s "\r\n" " ")"
         if [ -n "$REMOTE" ];then
         local RCLONE_CONFIG_PATH=$ETC_DIR/rclone.conf
         fi
 
         if [ -z "$REMOTE" ];then
-        $SU nice -n 19 ionice -c 2 -n 7 $RCLONE_PATH mount "AList:"$CLOUDDIR"" "$NERIBOXDIR/Cloud/.AList" --config "$RCLONE_CONFIG_PATH" --log-file "$NERIBOXDIR/log.txt" --cache-dir "$NERIBOXDIR/temp" --cache-chunk-path "$NERIBOXDIR/temp/cache-backend" --cache-db-path "$NERIBOXDIR/temp/cache-backend" --cache-tmp-upload-path "$NERIBOXDIR/temp" $PARM --daemon &
+        $SU nice -n 19 ionice -c 2 -n 7 $RCLONE_PATH mount "AList:"$CLOUDDIR"" "$NERIBOXDIR/Cloud/.AList" --config "$RCLONE_CONFIG_PATH" --log-file "$NERIBOXDIR/log.txt" --cache-dir "$NERIBOXDIR/temp" --cache-chunk-path "$NERIBOXDIR/temp/cache-backend" --cache-db-path "$NERIBOXDIR/temp/cache-backend" --cache-tmp-upload-path "$NERIBOXDIR/temp" --no-check-certificate $PARM --daemon &
         elif [ -n "$REMOTE" ];then
-        $SU nice -n 19 ionice -c 2 -n 7 $RCLONE_PATH mount ""$REMOTE":"$CLOUDDIR"" "$NERIBOXDIR/Cloud/$REMOTE" --config "$RCLONE_CONFIG_PATH" --log-file "$NERIBOXDIR/log.txt" --cache-dir "$NERIBOXDIR/temp" --cache-chunk-path "$NERIBOXDIR/temp/cache-backend" --cache-db-path "$NERIBOXDIR/temp/cache-backend" --cache-tmp-upload-path "$NERIBOXDIR/temp" $PARM --daemon &
+        $SU nice -n 19 ionice -c 2 -n 7 $RCLONE_PATH mount ""$REMOTE":"$CLOUDDIR"" "$NERIBOXDIR/Cloud/$REMOTE" --config "$RCLONE_CONFIG_PATH" --log-file "$NERIBOXDIR/log.txt" --cache-dir "$NERIBOXDIR/temp" --cache-chunk-path "$NERIBOXDIR/temp/cache-backend" --cache-db-path "$NERIBOXDIR/temp/cache-backend" --cache-tmp-upload-path "$NERIBOXDIR/temp" --no-check-certificate $PARM --daemon &
         fi
 
         local MNTDIR="($(find /mnt -maxdepth 4 -name emulated | grep -v pass_through) /storage/emulated)"
@@ -543,6 +564,38 @@ function FRPC () {
     elif [ -z "$VERSION_UPDATE" ];then
         echo CHECK_NETWORK
     fi
+    ;;
+    esac
+}
+
+function OPENSSL () {
+    case $1 in
+    MKCER)
+    function MAKE_ROOT_CER () {
+        $OPENSSL_PATH genrsa -out $CER_DIR/ROOT-PRIVATE.key
+        $OPENSSL_PATH req -new -key $CER_DIR/ROOT-PRIVATE.key -out $CER_DIR/ROOT.csr -config $CER_DIR/config/CA.conf
+        $OPENSSL_PATH x509 -req -days 3650 -sha512 -extfile $CER_DIR/config/CA_EXT.conf -extensions v3_ca -in $CER_DIR/ROOT.csr -signkey $CER_DIR/ROOT-PRIVATE.key -out $CER_DIR/ROOT.crt
+    }
+    function MAKE_CA_CER () {
+        $OPENSSL_PATH genrsa -out $CER_DIR/CA-PRIVATE.key
+        $OPENSSL_PATH req -new -key $CER_DIR/CA-PRIVATE.key -out $CER_DIR/CA.csr -config $CER_DIR/config/CA.conf
+        $OPENSSL_PATH x509 -req -extfile $CER_DIR/config/CA_EXT.conf -extensions v3_intermediate_ca -days 3650 -sha512 -CA $CER_DIR/ROOT.crt -CAkey $CER_DIR/ROOT-PRIVATE.key -CAcreateserial -CAserial $CER_DIR/CA.srl -in $CER_DIR/CA.csr -out $CER_DIR/CA.crt
+    }
+    function MAKE_SERVER_CER () {
+        $OPENSSL_PATH genrsa -out $CER_DIR/SERVER-PRIVATE.key
+        $OPENSSL_PATH req -new -key $CER_DIR/SERVER-PRIVATE.key -out $CER_DIR/SERVER.csr -config $CER_DIR/config/SERVER.conf
+        $OPENSSL_PATH x509 -req -extfile $CER_DIR/config/SERVER_EXT.conf -extensions v3_server -days 3650 -sha512 -CA $CER_DIR/CA.crt -CAkey $CER_DIR/CA-PRIVATE.key -CAserial $CER_DIR/CA.srl -in $CER_DIR/SERVER.csr -out $CER_DIR/SERVER.crt
+        $OPENSSL_PATH x509 -in $CER_DIR/SERVER.crt -out $CER_DIR/SERVER.pem -outform PEM
+    }
+    MAKE_ROOT_CER
+    MAKE_CA_CER
+    MAKE_SERVER_CER
+    ;;
+    INSTALL)
+    local HASH=$($OPENSSL_PATH x509 -subject_hash_old -in $CER_DIR/CA.crt | head -n 1)
+    local CER_PATH=/data/misc/user/0/cacerts-added/$HASH.0
+    cp $CER_DIR/CA.crt $CER_PATH
+    chown system:system $CER_PATH
     ;;
     esac
 }
@@ -679,6 +732,9 @@ local HELP="$TEXT_HELP_RCLONE"
 FRPC)
 local HELP="$TEXT_HELP_FRPC"
 ;;
+OPENSSL)
+local HELP="$TEXT_HELP_OPENSSL"
+;;
 TRACKERLIST)
 local HELP="$TEXT_HELP_TRACKERLIST"
 ;;
@@ -686,7 +742,7 @@ DASHBOARD)
 local HELP="$TEXT_HELP_DASHBOARD"
 ;;
 ALL)
-local HELP="$TEXT_HELP_ALIST\n$TEXT_HELP_ARIA2\n$TEXT_HELP_RCLONE\n$TEXT_HELP_FRPC\n$TEXT_HELP_TRACKERLIST\n$TEXT_HELP_DASHBOARD\n$TEXT_HELP_VERSION"
+local HELP="$TEXT_HELP_ALIST\n$TEXT_HELP_ARIA2\n$TEXT_HELP_RCLONE\n$TEXT_HELP_FRPC\n$TEXT_HELP_OPENSSL\n$TEXT_HELP_TRACKERLIST\n$TEXT_HELP_DASHBOARD\n$TEXT_HELP_VERSION\n$TEXT_HELP_HELP"
 ;;
 esac
 echo -e $HELP
@@ -701,16 +757,16 @@ function CONSOLE () {
                 for FLAG in $@;do
                 if [ "$EXTFLAG" = "true" ];then
                 local EXTFLAG=false && local FLAGS="$FLAGS $FLAG"
-                if [ "$FLAG" = "alist" -o "$FLAG" = "aria2" -o "$FLAG" = "rclone" -o "$FLAG" = "frpc" -o "$FLAG" = "trackerlist" -o "$FLAG" = "dashboard" -o "$FLAG" = "-v" ];then
+                if [ "$FLAG" = "alist" -o "$FLAG" = "aria2" -o "$FLAG" = "rclone" -o "$FLAG" = "frpc" -o "$FLAG" = "openssl" -o "$FLAG" = "trackerlist" -o "$FLAG" = "dashboard" -o "$FLAG" = "-v" -o "$FLAG" = "-version" ];then
                 SKIP_COMMAND=true
                 fi
                 else
                 case $FLAG in
-                --REMOTE|--MOUNTDIR|--CLOUDDIR)
+                -REMOTE|-MOUNTDIR|-CLOUDDIR)
                 local FLAGS="$FLAGS $FLAG"
                 local EXTFLAG=true
                 ;;
-                alist|aria2|rclone|frpc|trackerlist|dashboard|-v)
+                alist|aria2|rclone|frpc|openssl|trackerlist|dashboard|-v|-version)
                 break
                 ;;
                 *)
@@ -724,7 +780,7 @@ function CONSOLE () {
     function OPTION () {
             while [ $# -gt 0 ];do
             case $1 in
-            --start|--mount)
+            -start|-mount)
             if [ "$program" = "ALIST" -o "$program" = "ARIA2" -o "$program" = "FRPC" ];then
             LOG $program START
             elif [ "$program" = "RCLONE" ];then
@@ -732,7 +788,7 @@ function CONSOLE () {
             fi
             shift
             ;;
-            --stop|--umount)
+            -stop|-umount)
             if [ "$program" = "ALIST" -o "$program" = "ARIA2" -o "$program" = "FRPC" ];then
             LOG $program STOP
             elif [ "$program" = "RCLONE" ];then
@@ -740,23 +796,35 @@ function CONSOLE () {
             fi
             shift
             ;;
-            --update)
+            -update)
             if [ "$program" = "ALIST" -o "$program" = "ARIA2" -o "$program" = "RCLONE" -o "$program" = "FRPC" -o "$program" = "TRACKERLIST" ];then
             LOG $program UPDATE
             fi
             shift
             ;;
-            --config)
+            -config)
             if [ "$program" = "RCLONE" ];then
             RCLONE CONFIG
             fi
             shift
             ;;
-            --help)
+            -mkcer)
+            if [ "$program" = "OPENSSL" ];then
+            LOG OPENSSL MKCER
+            fi
+            shift
+            ;;
+            -install)
+            if [ "$program" = "OPENSSL" ];then
+            LOG OPENSSL INSTALL
+            fi
+            shift
+            ;;
+            -help|-h)
             HELP $program
             shift
             ;;
-            --REMOTE|--MOUNTDIR|--CLOUDDIR)
+            -REMOTE|-MOUNTDIR|-CLOUDDIR)
             local FLAG=$1
             eval local "${FLAG:2}"=$2
             shift 2
@@ -767,7 +835,7 @@ function CONSOLE () {
             esac
         done
     }
-    if [ "$#" = "0" -o "$1" = "--help" ];then
+    if [ "$#" = "0" -o "$1" = "-help" -o "$1" = "-h" ];then
     HELP ALL
     if [ ! "$#" = "0" ];then
     shift
@@ -775,7 +843,7 @@ function CONSOLE () {
     fi
     while [ $# -gt 0 ];do
     case $1 in
-    alist|aria2|rclone|frpc|trackerlist)
+    alist|aria2|rclone|frpc|openssl|trackerlist)
     if [ "$SKIP_COMMAND" = "true" ];then
     SKIP_COMMAND=false
     shift
@@ -794,7 +862,7 @@ function CONSOLE () {
     fi
     shift
     ;;
-    -v)
+    -v|-version)
     if [ "$SKIP_COMMAND" = "true" ];then
     SKIP_COMMAND=false
     shift

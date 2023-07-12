@@ -19,9 +19,9 @@
     "address": "0.0.0.0",
     "http_port": 80,
     "https_port": 443,
-    "force_https": true,
-    "cert_file": "/data/adb/modules/Neribox/etc/cer/certificate.pem",
-    "key_file": "/data/adb/modules/Neribox/etc/cer/key.pem",
+    "force_https": false,
+    "cert_file": "/data/adb/modules/Neribox/etc/certificate/SERVER.pem",
+    "key_file": "/data/adb/modules/Neribox/etc/certificate/SERVER-PRIVATE.key",
     "unix_file": ""
   },
   "temp_dir": "/data/adb/Neribox/temp",
