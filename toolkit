@@ -412,7 +412,7 @@ function RCLONE () {
         break
         fi
         done
-        if [ -z local HAVE_HTTPS=true ];then
+        if [ -z "$HAVE_HTTPS" ];then
             for PORT in ${ALIST_PORT[@]};do
             if [ -z "$($OPENSSL_PATH s_client -connect 0.0.0.0:PORT 2>/dev/null < $MODDIR/.module.prop | grep "Server certificate")" ];then
             CONFIG $RCLONE_CONFIG_PATH "url " " http://localhost:"$PORT"/dav"
