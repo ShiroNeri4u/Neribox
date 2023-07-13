@@ -71,7 +71,7 @@ fi
 
 if [ -z "$(echo $CER_FILE| grep SERVER-PRIVATE.key | grep SERVER.pem | grep CA.crt)" ];then
     chmod 777 $MODPATH/toolkit
-    $MODPATH/toolkit openssl --mkcer --install
+    $MODPATH/toolkit openssl -mkcer -install
     ui_print "- 生成并安装CA证书"
 fi
 
