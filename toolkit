@@ -253,8 +253,7 @@ function STATUS () {
                 ;;
                 WEBUI)
                 if [ "$program" = "ARIA2" ];then
-                local LIGHTTPD_CONFIG_PATH=$ETC_DIR/lighttpd_ariang.conf
-                eval WEBUI=$(echo "$(PORT LIGHTTPD $(PID LIGHTTPD PID) &)" | $BUSYBOX_PATH sed -n 's/.*=//g;$p' )
+                eval WEBUI="$(echo "$(PORT LIGHTTPD $(PID LIGHTTPD PID) &)" | $BUSYBOX_PATH sed -n 's/.*=//g;$p')"
                 fi
                 shift
                 ;;
@@ -878,3 +877,4 @@ function CONSOLE () {
     done
 }
 CONSOLE $@
+echo $WEBUI
