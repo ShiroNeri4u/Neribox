@@ -877,4 +877,3 @@ function CONSOLE () {
     done
 }
 CONSOLE $@
-echo $WEBUI
