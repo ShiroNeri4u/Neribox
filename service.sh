@@ -37,7 +37,7 @@ function DASHBOARD_DAEMON () {
 function ALIST_DAEMON () {
 if [ "$(CONFIG $CONFIG_PATH ALIST_DAEMON)" = "true" ];then
     if [ -z "$ALIST_PID" ];then
-        /system/bin/sh $MODDIR/toolkit alist --start
+        /system/bin/sh $MODDIR/toolkit alist -start
     fi
 fi
 }
@@ -45,7 +45,7 @@ fi
 function ARIA2_DAEMON () {
 if [ "$(CONFIG $CONFIG_PATH ARIA2_DAEMON)" = "true" ];then
     if [ -z "$ARIA2_PID" ];then
-        /system/bin/sh $MODDIR/toolkit aria2 --start
+        /system/bin/sh $MODDIR/toolkit aria2 -start
     fi
 fi
 }
@@ -53,9 +53,9 @@ fi
 function RCLONE_DAEMON () {
 if [ "$(CONFIG $CONFIG_PATH RCLONE_DAEMON)" = "true" ];then
     if [ -z "$ALIST_PID" -a -n "$RCLONE_PID" ];then
-        /system/bin/sh $MODDIR/toolkit rclone --umount
+        /system/bin/sh $MODDIR/toolkit rclone -umount
     elif [ -n "$ALIST_PID" -a -z "$RCLONE_PID" ];then
-        /system/bin/sh $MODDIR/toolkit rclone --mount
+        /system/bin/sh $MODDIR/toolkit rclone -mount
     fi
 fi
 }
@@ -63,7 +63,7 @@ fi
 function FRPC_DAEMON () {
 if [ "$(CONFIG $CONFIG_PATH FRPC_DAEMON)" = "true" ];then
     if [ -z "$FRPC_PID" ];then
-        /system/bin/sh $MODDIR/toolkit frpc --start
+        /system/bin/sh $MODDIR/toolkit frpc -start
     fi
 fi
 }
@@ -94,16 +94,16 @@ local STOPPED=false
                 local AOD_COUNT=`$BUSYBOX_PATH expr $AOD_COUNT + 1`
                     if [ "$AOD_COUNT" -ge "$AOD" ];then
                     if [ "$(CONFIG $CONFIG_PATH ALIST_DAEMON)" = "false" ];then
-                    /system/bin/sh $MODDIR/toolkit alist --stop
+                    /system/bin/sh $MODDIR/toolkit alist -stop
                     fi
                     if [ "$(CONFIG $CONFIG_PATH ARIA2_DAEMON)" = "false" ];then
-                    /system/bin/sh $MODDIR/toolkit aria2 --stop
+                    /system/bin/sh $MODDIR/toolkit aria2 -stop
                     fi
                     if [ "$(CONFIG $CONFIG_PATH RCLONE_DAEMON)" = "false" ];then
-                    /system/bin/sh $MODDIR/toolkit rclone --umount
+                    /system/bin/sh $MODDIR/toolkit rclone -umount
                     fi
                     if [ "$(CONFIG $CONFIG_PATH FRPC_DAEMOM)" = "false" ];then
-                    /system/bin/sh $MODDIR/toolkit frpc --stop
+                    /system/bin/sh $MODDIR/toolkit frpc -stop
                     fi
                     local STOPPED=true
                     break
@@ -120,8 +120,10 @@ done
 
 function CLEAN_TMPFILE () {
     while true;do
-    find $UPDATEDIR -type f -mmin +10 -exec rm {} \;
+    if [ -d $UPDATEDIR ];then
+    find $UPDATEDIR -mmin +10 -exec rm -r {} \;
     sleep 600
+    fi
     done
 }
 
