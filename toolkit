@@ -591,10 +591,13 @@ function OPENSSL () {
     MAKE_SERVER_CER
     ;;
     INSTALL)
+    local CER_PATH=/data/misc/user/0/cacerts-added
+    if [ ! -d "$CER_PATH" ];then
+    mkdir -p "$CER_PATH" && chmod 755 "$CER_PATH" &&chown system:system "$CER_PATH"
+    fi
     local HASH=$($OPENSSL_PATH x509 -subject_hash_old -in $CER_DIR/CA.crt | head -n 1)
-    local CER_PATH=/data/misc/user/0/cacerts-added/$HASH.0
-    cp $CER_DIR/CA.crt $CER_PATH
-    chown system:system $CER_PATH
+    cp $CER_DIR/CA.crt $CER_PATH/$HASH.0
+    chown system:system $CER_PATH/$HASH.0
     ;;
     esac
 }
@@ -825,7 +828,7 @@ function CONSOLE () {
             ;;
             -REMOTE|-MOUNTDIR|-CLOUDDIR)
             local FLAG=$1
-            eval local "${FLAG:2}"=$2
+            eval local "${FLAG:1}"=$2
             shift 2
             ;;
             *)
