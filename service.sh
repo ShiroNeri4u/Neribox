@@ -122,8 +122,8 @@ function CLEAN_TMPFILE () {
     while true;do
     if [ -d $UPDATEDIR ];then
     find $UPDATEDIR -mmin +10 -exec rm -r {} \;
-    sleep 600
     fi
+    sleep 600
     done
 }
 
