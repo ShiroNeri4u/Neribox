@@ -18,11 +18,12 @@
   "scheme": {
     "address": "0.0.0.0",
     "http_port": 80,
-    "https_port": 443,
+    "https_port": -1,
     "force_https": false,
     "cert_file": "/data/adb/modules/Neribox/etc/certificate/SERVER.pem",
     "key_file": "/data/adb/modules/Neribox/etc/certificate/SERVER-PRIVATE.key",
-    "unix_file": ""
+    "unix_file": "",
+    "unix_file_perm": ""
   },
   "temp_dir": "/data/adb/Neribox/temp",
   "bleve_dir": "/data/adb/Neribox/bleve",

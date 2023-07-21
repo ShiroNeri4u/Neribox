@@ -203,9 +203,9 @@ function STATUS () {
     }
     function USERANDPASSWORD () {
         local TYPE=$1
-        local DB_FILE_PATH=$($JQ_PATH '.database.db_file' $ALIST_CONFIG_PATH| $BUSYBOX_PATH sed 's/"//g' )
+        local DB_FILE_PATH=$($JQ_PATH '.database.db_file' $ALIST_CONFIG_PATH | $BUSYBOX_PATH sed 's/"//g' )
             if [ -f $DB_FILE_PATH ];then
-                local TABLE_PREFIX=$(cat $ALIST_CONFIG_PATH | $JQ_PATH .database.table_prefix | $BUSYBOX_PATH sed 's/"//g')users
+                local TABLE_PREFIX=$($JQ_PATH .database.table_prefix $ALIST_CONFIG_PATH | $BUSYBOX_PATH sed 's/"//g')users
                 local USER_INFO=$($SQLITE_PATH $DB_FILE_PATH "SELECT *FROM $TABLE_PREFIX where role like 2")
             fi
         case $TYPE in
@@ -279,6 +279,13 @@ function ALIST () {
     done
     STATUS ALIST[PID]
     if [ "$ALIST_PID" = "✘" ];then
+        local ALIST_HTTPS="$(CONFIG $CONFIG_PATH ALIST_HTTPS)"
+        if [ "$ALIST_HTTPS" -gt "0" -a "ALIST_HTTPS" -lt "65536" ];then
+            cat $ALIST_CONFIG_PATH | $JQ_PATH ".scheme.https_port = $ALIST_HTTPS" $ALIST_CONFIG_PATH > $ETC_DIR/tmp.json
+        else
+            cat $ALIST_CONFIG_PATH | $JQ_PATH ".scheme.https_port = -1" > $ALIST_CONFIG_PATH > $ETC_DIR/tmp.json
+        fi
+        mv -f $ETC_DIR/tmp.json $ALIST_CONFIG_PATH
         $ALIST_PATH server --data $ETC_DIR &
     fi
     ;;
