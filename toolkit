@@ -281,12 +281,10 @@ function ALIST () {
     if [ "$ALIST_PID" = "✘" ];then
         local ALIST_HTTPS="$(CONFIG $CONFIG_PATH ALIST_HTTPS)"
         if [ "$ALIST_HTTPS" -gt "0" -a "ALIST_HTTPS" -lt "65536" ];then
-            cat $ALIST_CONFIG_PATH | $JQ_PATH ".scheme.https_port = $ALIST_HTTPS" $ALIST_CONFIG_PATH > $ETC_DIR/tmp.json
+            ALIST_TEMP_DIR=$NERIBOXDIR/temp ALIST_BLEVE_DIR=$NERIBOXDIR/bleve ALIST_LOG_NAME=$NERIBOXDIR/log.txt ALIST_HTTPS_PORT=$ALIST_HTTPS ALIST_CERT_FILE=$CER_DIR/SERVER.pem ALIST_KEY_FILE=$CER_DIR/SERVER-PRIVATE.key $ALIST_PATH server --data $ETC_DIR &
         else
-            cat $ALIST_CONFIG_PATH | $JQ_PATH ".scheme.https_port = -1" > $ALIST_CONFIG_PATH > $ETC_DIR/tmp.json
+            ALIST_TEMP_DIR=$NERIBOXDIR/temp ALIST_BLEVE_DIR=$NERIBOXDIR/bleve ALIST_LOG_NAME=$NERIBOXDIR/log.txt ALIST_HTTPS_PORT=-1 $ALIST_PATH server --data $ETC_DIR &
         fi
-        mv -f $ETC_DIR/tmp.json $ALIST_CONFIG_PATH
-        $ALIST_PATH server --data $ETC_DIR &
     fi
     ;;
     STOP)
@@ -334,7 +332,11 @@ function ARIA2 () {
     START)
     STATUS ARIA2[PID]
     if [ "$ARIA2_PID" = "✘" ];then
-        $ARIA2_PATH --conf-path=$ARIA2_CONFIG_PATH -D
+        local ARIA2_HTTPS="$(CONFIG $CONFIG_PATH ARIA2_HTTPS)"
+        if [ "$ARIA2_HTTPS" = true ];then
+        local PARM="--rpc-secure=true --rpc-certificate=/data/adb/modules/Neribox/etc/certificate/SERVER.pem --rpc-private-key=/data/adb/modules/Neribox/etc/certificate/SERVER-PRIVATE.key"
+        fi
+        $ARIA2_PATH $PARM --conf-path=$ARIA2_CONFIG_PATH -D
         if [ "$(CONFIG $CONFIG_PATH ARIANG_WEBUI)" = "true" ];then
             LIGHTTPD START &
         fi
@@ -622,8 +624,13 @@ function TRACKERLIST () {
 
 function ECHO_VERSION () {
     LANG
+    if [ -z "$1" ];then
     local DATA="$(CONFIG $MODDIR/.module.prop versionCode)"
     echo -e "$TEXT_MOD_NAME:$TEXT_NERIBOX\n$TEXT_VERSION:"$(CONFIG $MODDIR/.module.prop version)"\n$TEXT_UPDATE_DATE:"${DATA:0:4}"$TEXT_YEAR"${DATA:4:2}"$TEXT_MONTH"${DATA:6:2}"$TEXT_DAY\n$TEXT_AUTHOR:"$(CONFIG $MODDIR/.module.prop author)""
+    elif [ -n "$1" ];then
+    STATUS $1[VERSION]
+    echo $TEXT_VERSION:"$(INFORMATION_ECHO $1 VERSION)"
+    fi
 }
 
 function MKDIR () {
@@ -631,12 +638,7 @@ function MKDIR () {
     chmod 777 $NERIBOXDIR
 }
 
-function DASHBOARD () {
-    local STATUSBAR="$(CONFIG $CONFIG_PATH STATUSBAR)"
-    STATUS $STATUSBAR
-    local ENV=$(set|tr "\n" "*")
-    LANG
-    function PROGRAM_NAME () {
+function PROGRAM_NAME () {
     case "$1" in
     ALIST)
     echo AList
@@ -664,10 +666,17 @@ function DASHBOARD () {
     ;;
     esac
     }
-    function INFORMATION_ECHO () {
+    
+function INFORMATION_ECHO () {
+    local ENV=$(set|tr "\n" "*")
     local ENV=$(echo $ENV | tr "*" "\n" | $BUSYBOX_PATH grep "$1_$2" | awk -F "=" '{print $2}')
     echo $ENV
     }
+
+function DASHBOARD () {
+    local STATUSBAR="$(CONFIG $CONFIG_PATH STATUSBAR)"
+    STATUS $STATUSBAR
+    LANG
     function INFORMATION_PRINT () {
     while [ $# -gt 0 ]; do
 	case "$1" in
@@ -766,7 +775,7 @@ function CONSOLE () {
                 for FLAG in $@;do
                 if [ "$EXTFLAG" = "true" ];then
                 local EXTFLAG=false && local FLAGS="$FLAGS $FLAG"
-                if [ "$FLAG" = "alist" -o "$FLAG" = "aria2" -o "$FLAG" = "rclone" -o "$FLAG" = "frpc" -o "$FLAG" = "openssl" -o "$FLAG" = "trackerlist" -o "$FLAG" = "dashboard" -o "$FLAG" = "-v" -o "$FLAG" = "-version" ];then
+                if [ "$FLAG" = "alist" -o "$FLAG" = "aria2" -o "$FLAG" = "rclone" -o "$FLAG" = "frpc" -o "$FLAG" = "jq" -o "$FLAG" = "sqlite" -o "$FLAG" = "fusermount" -o "$FLAG" = "openssl" -o "$FLAG" = "trackerlist" -o "$FLAG" = "dashboard" -o "$FLAG" = "-v" -o "$FLAG" = "-version" -];then
                 SKIP_COMMAND=true
                 fi
                 else
@@ -775,7 +784,7 @@ function CONSOLE () {
                 local FLAGS="$FLAGS $FLAG"
                 local EXTFLAG=true
                 ;;
-                alist|aria2|rclone|frpc|openssl|trackerlist|dashboard|-v|-version)
+                alist|aria2|rclone|frpc|jq|sqlite|fusermount|openssl|trackerlist|dashboard)
                 break
                 ;;
                 *)
@@ -813,30 +822,44 @@ function CONSOLE () {
             ;;
             -config)
             if [ "$program" = "RCLONE" ];then
-            RCLONE CONFIG
+            $program CONFIG
             fi
             shift
             ;;
             -mkcer)
             if [ "$program" = "OPENSSL" ];then
-            LOG OPENSSL MKCER
+            LOG $program MKCER
             fi
             shift
             ;;
             -install)
             if [ "$program" = "OPENSSL" ];then
-            LOG OPENSSL INSTALL
+            LOG $program INSTALL
             fi
             shift
             ;;
             -help|-h)
+            if [ "$SKIP_COMMAND" = "true" ];then
+            SKIP_COMMAND=false
+            else
             HELP $program
+            fi
             shift
             ;;
             -REMOTE|-MOUNTDIR|-CLOUDDIR)
             local FLAG=$1
             eval local "${FLAG:1}"=$2
             shift 2
+            ;;
+            -v)
+            if [ "$SKIP_COMMAND" = "true" ];then
+            SKIP_COMMAND=false
+            else
+            if [ "$program" = "ALIST" -o "$program" = "ARIA2" -o "$program" = "LIGHTTPD" -o "$program" = "RCLONE" -o "$program" = "FRPC" -o "$program" = "JQ" -o "$program" = "SQLITE" -o "$program" = "FUSERMOUNT" -o "$program" = "OPENSSL" ];then
+            ECHO_VERSION $program
+            fi
+            fi
+            shift
             ;;
             *)
             shift
@@ -846,13 +869,14 @@ function CONSOLE () {
     }
     if [ "$#" = "0" -o "$1" = "-help" -o "$1" = "-h" ];then
     HELP ALL
-    if [ ! "$#" = "0" ];then
     shift
-    fi
+    elif [ "$1" = "-version" -o "$1" = "-v" ];then
+    ECHO_VERSION
+    shift
     fi
     while [ $# -gt 0 ];do
     case $1 in
-    alist|aria2|rclone|frpc|openssl|trackerlist)
+    alist|aria2|lighttpd|rclone|frpc|jq|sqlite|fusermount|openssl|trackerlist)
     if [ "$SKIP_COMMAND" = "true" ];then
     SKIP_COMMAND=false
     shift
@@ -865,20 +889,10 @@ function CONSOLE () {
     dashboard)
     if [ "$SKIP_COMMAND" = "true" ];then
     SKIP_COMMAND=false
-    shift
     else
     DASHBOARD
     fi
     shift
-    ;;
-    -v|-version)
-    if [ "$SKIP_COMMAND" = "true" ];then
-    SKIP_COMMAND=false
-    shift
-    else
-    ECHO_VERSION
-    shift
-    fi
     ;;
     *)
     shift
