@@ -775,7 +775,7 @@ function CONSOLE () {
                 for FLAG in $@;do
                 if [ "$EXTFLAG" = "true" ];then
                 local EXTFLAG=false && local FLAGS="$FLAGS $FLAG"
-                if [ "$FLAG" = "alist" -o "$FLAG" = "aria2" -o "$FLAG" = "rclone" -o "$FLAG" = "frpc" -o "$FLAG" = "jq" -o "$FLAG" = "sqlite" -o "$FLAG" = "fusermount" -o "$FLAG" = "openssl" -o "$FLAG" = "trackerlist" -o "$FLAG" = "dashboard" -o "$FLAG" = "-v" -o "$FLAG" = "-version" -];then
+                if [ "$FLAG" = "alist" -o "$FLAG" = "aria2" -o "$FLAG" = "rclone" -o "$FLAG" = "frpc" -o "$FLAG" = "jq" -o "$FLAG" = "sqlite" -o "$FLAG" = "fusermount" -o "$FLAG" = "openssl" -o "$FLAG" = "trackerlist" -o "$FLAG" = "dashboard" -o "$FLAG" = "-v" -o "$FLAG" = "-version" ];then
                 SKIP_COMMAND=true
                 fi
                 else
