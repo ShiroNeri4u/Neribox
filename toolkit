@@ -279,12 +279,18 @@ function ALIST () {
     done
     STATUS ALIST[PID]
     if [ "$ALIST_PID" = "✘" ];then
-        local ALIST_HTTPS="$(CONFIG $CONFIG_PATH ALIST_HTTPS)"
-        if [ "$ALIST_HTTPS" -gt "0" -a "ALIST_HTTPS" -lt "65536" ];then
-            ALIST_TEMP_DIR=$NERIBOXDIR/temp ALIST_BLEVE_DIR=$NERIBOXDIR/bleve ALIST_LOG_NAME=$NERIBOXDIR/log.txt ALIST_HTTPS_PORT=$ALIST_HTTPS ALIST_CERT_FILE=$CER_DIR/SERVER.pem ALIST_KEY_FILE=$CER_DIR/SERVER-PRIVATE.key $ALIST_PATH server --data $ETC_DIR &
-        else
-            ALIST_TEMP_DIR=$NERIBOXDIR/temp ALIST_BLEVE_DIR=$NERIBOXDIR/bleve ALIST_LOG_NAME=$NERIBOXDIR/log.txt ALIST_HTTPS_PORT=-1 $ALIST_PATH server --data $ETC_DIR &
+        local ALIST_HTTP="$(CONFIG $CONFIG_PATH ALIST_PORT | awk -F "|" '{print $1}')"
+        local ALIST_HTTPS="$(CONFIG $CONFIG_PATH ALIST_PORT | awk -F "|" '{print $2}')"
+        if [ "$ALIST_HTTP" -eq "$ALIST_HTTPS" ];then
+            local ALIST_HTTPS="-1"
         fi
+        if [ ! "$ALIST_HTTP" -gt "-1" -o ! "$ALIST_HTTP" -lt "65536" ];then
+            local ALIST_HTTP="-1"
+        fi
+        if [ ! "$ALIST_HTTPS" -gt "-1" -o ! "$ALIST_HTTPS" -lt "65536" ];then
+            local ALIST_HTTPS="-1"
+        fi
+        ALIST_TEMP_DIR=$NERIBOXDIR/temp ALIST_BLEVE_DIR=$NERIBOXDIR/bleve ALIST_LOG_NAME=$NERIBOXDIR/log.txt ALIST_HTTP_PORT=$ALIST_HTTP ALIST_HTTPS_PORT=$ALIST_HTTPS ALIST_CERT_FILE=$CER_DIR/SERVER.pem ALIST_KEY_FILE=$CER_DIR/SERVER-PRIVATE.key $ALIST_PATH server --data $ETC_DIR &
     fi
     ;;
     STOP)
