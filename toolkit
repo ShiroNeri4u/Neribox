@@ -141,6 +141,9 @@ function STATUS () {
 	function PORT () {
         local PROGRAM=$1
         while [ $# -gt 1 ]; do
+        if [ "$2" = "PORT" ];then
+        break
+        else
         case $PROGRAM in
         ARIA2)
         if [ -z "$PORT" ];then
@@ -159,10 +162,18 @@ function STATUS () {
         shift
         ;;
         esac
+        fi
         done
-		if [ -z "$PORT" ];then
-			echo "${PROGRAM}_PORT=✘"
-		else echo "${PROGRAM}_PORT=($PORT)"
+        if [ ! "$2" = "PORT" ];then
+		    if [ -z "$PORT" ];then
+			    echo "${PROGRAM}_PORT=✘"
+		    else echo "${PROGRAM}_PORT=($PORT)"
+            fi
+        elif [ "$2" = "PORT" ];then
+            if [ -z "$PORT" ];then
+			    echo "✘"
+		    else echo "$PORT"
+		    fi
         fi
     }
     function VERSION () {
@@ -253,7 +264,7 @@ function STATUS () {
                 ;;
                 WEBUI)
                 if [ "$program" = "ARIA2" ];then
-                eval WEBUI="$(echo "$(PORT LIGHTTPD $(PID LIGHTTPD PID) &)" | $BUSYBOX_PATH sed -n 's/.*=//g;$p')"
+                eval "WEBUI=($(PORT LIGHTTPD $(PID LIGHTTPD PID) PORT &))"
                 fi
                 shift
                 ;;
@@ -721,7 +732,7 @@ function DASHBOARD () {
                 ;;
                 WEBUI)
                 if [ "$program" = "ARIA2" ];then
-                INFORMATION="${INFORMATION}|${TEXT_WEBUI}:$WEBUI"
+                INFORMATION="${INFORMATION}|${TEXT_WEBUI}:${WEBUI[@]}"
                 fi
                 shift
                 ;;
