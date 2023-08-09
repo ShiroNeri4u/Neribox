@@ -27,7 +27,7 @@ fi
 function DASHBOARD_DAEMON () {
     local ROOT_MANAGER=$(CONFIG $CONFIG_PATH ROOT_MANAGER)
     while true;do
-        if [ "$(dumpsys deviceidle get screen)" = "true" -a -n "$(dumpsys window | grep mCurrentFocus | awk '{print $3}' | awk -F / '{print $1}' | grep "$ROOT_MANAGER" )" -a "$(CONFIG $CONFIG_PATH DASHBOARD)" = "true"  ];then
+        if [ "$(dumpsys deviceidle get screen)" = "true" -a -n "$(dumpsys window | grep mCurrentFocus | awk '{print $NF}' | awk -F / '{print $1}' | grep "$ROOT_MANAGER" )" -a "$(CONFIG $CONFIG_PATH DASHBOARD)" = "true"  ];then
         /system/bin/sh $MODDIR/toolkit dashboard
         fi
     sleep 3

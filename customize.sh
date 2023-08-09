@@ -106,7 +106,7 @@ done
 [ -z "$FRPC_PARM" ] && FRPC_PARM=
 [ -z "$TERMUX_REPO" ] && TERMUX_REPO=https://packages-cf.termux.dev
 [ -z "$TRACKERLIST" ] && TRACKERLIST=https://cdn.jsdelivr.net/gh/ngosang/trackerslist@master/trackers_all_ip.txt
-[ -z "$ROOT_MANAGER" ] && ROOT_MANAGER="$(dumpsys window | grep mCurrentFocus | awk '{print $3}' | awk -F / '{print $1}')"
+[ -z "$ROOT_MANAGER" ] && ROOT_MANAGER="$(dumpsys window | grep mCurrentFocus | awk '{print $NF}' | awk -F / '{print $1}')"
 #创建配置文件
 echo "#true启用,false不启用
 #息屏控制，多少秒后关闭进程，0禁用
@@ -125,7 +125,7 @@ ALIST_DAEMON=$ALIST_DAEMON
 ALIST_PORT=$ALIST_PORT
 
 #AList管理员密码（强制），仅对3.15.1版本以上生效
-ALIST_PASSWD=&ALIST_PASSWD
+ALIST_PASSWD=$ALIST_PASSWD
 
 #Aria2进程守护
 ARIA2_DAEMON=$ARIA2_DAEMON
