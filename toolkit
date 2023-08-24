@@ -638,10 +638,10 @@ function OPENSSL () {
 function TRACKERLIST () {
     case $1 in
     UPDATE)
-    $BUSYBOX_PATH sed -i '/bt-tracker=/d' $ARIA2_CONFIG_PATH
-    while [ -z "$(grep 'bt-tracker' $ARIA2_CONFIG_PATH | $BUSYBOX_PATH cut -d '=' -f 2)" ];do
-    $BUSYBOX_PATH sed -i '/bt-tracker=/d' $ARIA2_CONFIG_PATH | echo "bt-tracker=`$BUSYBOX_PATH wget --no-check-certificate -qO- "$(CONFIG $CONFIG_PATH TRACKERLIST)" | $BUSYBOX_PATH awk NF | $BUSYBOX_PATH sed ":a;N;s/\n/,/g;ta"`" >> $ARIA2_CONFIG_PATH
-    done
+    local TRACKER="`$BUSYBOX_PATH wget --no-check-certificate -qO- "$(CONFIG $CONFIG_PATH TRACKERLIST)" | $BUSYBOX_PATH awk NF | $BUSYBOX_PATH sed ":a;N;s/\n/,/g;ta"`"
+    if [ -n "$TRACKER" ];then
+    CONFIG $ARIA2_CONFIG_PATH bt-tracker "$TRACKER"
+    fi
     ;;
     esac
 }
@@ -756,7 +756,7 @@ function DASHBOARD () {
     done
     }
     INFORMATION_PRINT $STATUSBAR
-    echo "$(cat $MODDIR/.module.prop)${INFORMATION}" > $MODDIR/module.prop
+    echo -e "id=Neribox\nname=Neribox\nversion=2.5\nversionCode=20230824\nauthor=风又音理Neri\ndescription=$INFORMATION\nupdateJson=https://kazamataneri.tech/update.json" > $MODDIR/module.prop
 }
 
 function HELP () {

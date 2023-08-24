@@ -1,6 +1,7 @@
 id=Neribox
 name=Neribox
 version=2.5
-versionCode=20230820
+versionCode=20230824
 author=风又音理Neri
 description=
+updateJson=https://kazamataneri.tech/update.json
