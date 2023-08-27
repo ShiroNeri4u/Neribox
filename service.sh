@@ -14,6 +14,8 @@ NERIBOXDIR="/data/adb/Neribox"
 UPDATEDIR="$NERIBOXDIR/update-cache"
 CONFIG_PATH="$NERIBOXDIR/config.ini"
 
+mkdir -p $NERIBOXDIR/PID
+
 function CONFIG () {
 if [ -n "$1" -a -z "$2" -a -z "$3" ];then
     cat $1
@@ -83,15 +85,15 @@ function KEEP_DAEMON () {
 }
 
 function AOD_DAEMON () {
-while true;do
-local STOPPED=false
-    while [ "$(dumpsys deviceidle get screen)" = "false" ];do
-        local AOD="$(CONFIG $CONFIG_PATH AOD)"
-        if [ "$AOD" -gt "0" -a "$STOPPED"="false" ];then
-            local AOD_COUNT=0
-                while [ "$AOD" -gt "$AOD_COUNT" ];do
-                sleep 1
-                local AOD_COUNT=`$BUSYBOX_PATH expr $AOD_COUNT + 1`
+    while true;do
+    local STOPPED=false
+        while [ "$(dumpsys deviceidle get screen)" = "false" ];do
+            local AOD="$(CONFIG $CONFIG_PATH AOD)"
+            if [ "$AOD" -gt "0" -a "$STOPPED"="false" ];then
+                local AOD_COUNT=0
+                    while [ "$AOD" -gt "$AOD_COUNT" ];do
+                    sleep 1
+                    local AOD_COUNT=`$BUSYBOX_PATH expr $AOD_COUNT + 1`
                     if [ "$AOD_COUNT" -ge "$AOD" ];then
                     if [ "$(CONFIG $CONFIG_PATH ALIST_DAEMON)" = "false" ];then
                     /system/bin/sh $MODDIR/toolkit alist -stop
@@ -111,11 +113,11 @@ local STOPPED=false
                     local STOPPED=false
                     break
                     fi
-                done
-        fi
-        sleep 3
+                    done
+            fi
+            sleep 3
+        done
     done
-done
 }
 
 function CLEAN_TMPFILE () {
@@ -128,6 +130,10 @@ function CLEAN_TMPFILE () {
 }
 
 DASHBOARD_DAEMON &
+echo "$!" > $NERIBOXDIR/PID/dashboard
 KEEP_DAEMON &
+echo "$!" > $NERIBOXDIR/PID/daemon
 AOD_DAEMON &
+echo "$!" > $NERIBOXDIR/PID/aod
 CLEAN_TMPFILE &
+echo "$!" > $NERIBOXDIR/PID/clean

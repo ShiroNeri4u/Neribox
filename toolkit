@@ -756,7 +756,7 @@ function DASHBOARD () {
     done
     }
     INFORMATION_PRINT $STATUSBAR
-    echo -e "id=Neribox\nname=Neribox\nversion=2.5\nversionCode=20230824\nauthor=风又音理Neri\ndescription=$INFORMATION\nupdateJson=https://kazamataneri.tech/update.json" > $MODDIR/module.prop
+    echo -e "id=Neribox\nname=Neribox\nversion=2.5\nversionCode=20230827\nauthor=风又音理Neri\ndescription=$INFORMATION\nupdateJson=https://kazamataneri.tech/update.json" > $MODDIR/module.prop
 }
 
 function HELP () {

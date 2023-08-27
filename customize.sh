@@ -8,8 +8,10 @@ elif [ -f /data/adb/ksu/bin/busybox ];then
 BUSYBOX_PATH=/data/adb/ksu/bin/busybox
 fi
 
-mkdir -p /data/adb/Neribox
-chmod 777 /data/adb/Neribox
+NERIBOXDIR="/data/adb/Neribox"
+
+mkdir -p $NERIBOXDIR
+chmod 777 $NERIBOXDIR
 
 function LANG () {
     local LANG=$(getprop | grep persist.sys.locale | grep -v persist.sys.localevar | $BUSYBOX_PATH awk '{print $2}')
@@ -58,8 +60,8 @@ if [ -d $MODDIR ];then
         fi
     done
     fi
-    if [ -f /data/adb/Neribox/backup.list ];then
-    EXTBACKUPFILE=$(cat /data/adb/Neribox/backup.list | $BUSYBOX_PATH egrep "^file=" | $BUSYBOX_PATH sed -n 's/.*=//g;$p')
+    if [ -f $NERIBOXDIR/backup.list ];then
+    EXTBACKUPFILE=$(cat $NERIBOXDIR/backup.list | $BUSYBOX_PATH egrep "^file=" | $BUSYBOX_PATH sed -n 's/.*=//g;$p')
     for i in $EXTBACKUPFILE;do
         if [ -f ${MODDIR}${i} ];then
         cp -rp ${MODDIR}${i} ${MODPATH}${i}
@@ -85,7 +87,7 @@ if [ -n "$1" -a -z "$2" -a -z "$3" ];then
 fi
 }
 
-CONFIG_PATH="/data/adb/Neribox/config.ini"
+CONFIG_PATH="$NERIBOXDIR/config.ini"
 
 for object in AOD DASHBOARD STATUSBAR ALIST_DAEMON ALIST_PORT ALIST_PASSWD ARIA2_DAEMON ARIA2_HTTPS ARIANG_WEBUI RCLONE_DAEMON MOUNTDIR CLOUDDIR FRPC_DAEMON FRPC_PARM TERMUX_REPO TRACKERLIST ROOT_MANAGER;do
 eval $object=$(CONFIG $CONFIG_PATH $object)
@@ -163,3 +165,16 @@ ROOT_MANAGER=$ROOT_MANAGER
 ui_print "- 已生成配置文件"
 ui_print "- Root管理器包名$ROOT_MANAGER"
 ui_print "- 若不对在配置文件中修改"
+
+if [ -d $NERIBOXDIR/PID ];then
+    ui_print "- 启用非重启模式"
+    rm -rf $MODDIR/*
+    mv $MODPATH/* $MODDIR
+    rm -rf $MODPATH
+    for x in $NERIBOXDIR/PID/clean $NERIBOXDIR/PID/aod $NERIBOXDIR/PID/daemon $NERIBOXDIR/PID/dashboard;do
+    kill -9 $(cat $x)
+done
+    /system/bin/sh $MODDIR/service.sh
+fi
+    rm $MODDIR/customize.sh
+    chmod 777 $MODDIR/toolkit
