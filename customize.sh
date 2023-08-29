@@ -166,6 +166,17 @@ ui_print "- 已生成配置文件"
 ui_print "- Root管理器包名$ROOT_MANAGER"
 ui_print "- 若不对在配置文件中修改"
 
+if [ -d /data/user/0/bin.mt.plus/files/term/usr/etc/bash_completion.d ];then
+ui_print "- 检测到mt终端，安装补全功能"
+user_id="$(ls -l /data/user/0/bin.mt.plus/files/term/usr/etc | tail -n 1 | awk '{print $3}')"
+mv -f $MODPATH/toolkit_complete.sh /data/user/0/bin.mt.plus/files/term/usr/etc/bash_completion.d/toolkit_complete.sh
+chmod 700 /data/user/0/bin.mt.plus/files/term/usr/etc/bash_completion.d/toolkit_complete.sh
+chown $user_id:$user_id /data/user/0/bin.mt.plus/files/term/usr/etc/bash_completion.d/toolkit_complete.sh
+mv -f $MODPATH/bash.bashrc /data/user/0/bin.mt.plus/files/term/usr/etc/bash.bashrc
+chmod 600 /data/user/0/bin.mt.plus/files/term/usr/etc/bash.bashrc
+chown $user_id:$user_id /data/user/0/bin.mt.plus/files/term/usr/etc/bash.bashrc
+fi
+
 if [ -d $NERIBOXDIR/PID ];then
     ui_print "- 启用非重启模式"
     rm -rf $MODDIR/*

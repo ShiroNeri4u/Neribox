@@ -294,7 +294,7 @@ function ALIST () {
     done
     STATUS ALIST[PID,VERSION]
     if [ "$(echo "$ALIST_VERSION 3.15.0" | $BUSYBOX_PATH tr " " "\n" | /system/bin/sort -V | $BUSYBOX_PATH head -n 1)" = "3.15.0" ];then
-        $ALIST_PATH admin set "$(CONFIG $CONFIG_PATH ALIST_PASSWD)" --data $ETC_DIR >/dev/null 2>&1
+        $ALIST_PATH admin set "$(CONFIG $CONFIG_PATH ALIST_PASSWD)" --data $ETC_DIR &> /dev/null
     fi
     if [ "$ALIST_PID" = "✘" ];then
         local ALIST_HTTP="$(CONFIG $CONFIG_PATH ALIST_PORT | awk -F "|" '{print $1}')"
@@ -438,7 +438,7 @@ function RCLONE () {
         local PORT=$(cat $ALIST_CONFIG_PATH | $JQ_PATH .port | $BUSYBOX_PATH sed 's/"//g')
         fi
         for PORT in ${ALIST_PORT[@]};do
-        if [ -n "$($OPENSSL_PATH s_client -connect 0.0.0.0:$PORT 2>/dev/null < $MODDIR/.module.prop | grep "Server certificate")" ];then
+        if [ -n "$($OPENSSL_PATH s_client -connect 0.0.0.0:$PORT 2>/dev/null < $MODDIR/module.prop | grep "Server certificate")" ];then
         CONFIG $RCLONE_CONFIG_PATH "url " " https://localhost:"$PORT"/dav"
         local HAVE_HTTPS=true
         break
@@ -446,13 +446,13 @@ function RCLONE () {
         done
         if [ -z "$HAVE_HTTPS" ];then
             for PORT in ${ALIST_PORT[@]};do
-            if [ -z "$($OPENSSL_PATH s_client -connect 0.0.0.0:PORT 2>/dev/null < $MODDIR/.module.prop | grep "Server certificate")" ];then
+            if [ -z "$($OPENSSL_PATH s_client -connect 0.0.0.0:$PORT 2>/dev/null < $MODDIR/module.prop | grep "Server certificate")" ];then
             CONFIG $RCLONE_CONFIG_PATH "url " " http://localhost:"$PORT"/dav"
             fi
             done
         fi
         CONFIG $RCLONE_CONFIG_PATH "user " " $ALIST_USER"
-        $RCLONE_PATH config password AList pass "$ALIST_PASSWORD" --config "$RCLONE_CONFIG_PATH" >/dev/null 2>&1
+        $RCLONE_PATH config password AList pass "$ALIST_PASSWORD" --config "$RCLONE_CONFIG_PATH" &> /dev/null
     fi
     if [ -z "$REMOTE" -a ! "$ALIST_PID" = "✘" ] || [ -n "$REMOTE" ];then
         if [ -z "$REMOTE" ];then
@@ -756,7 +756,7 @@ function DASHBOARD () {
     done
     }
     INFORMATION_PRINT $STATUSBAR
-    echo -e "id=Neribox\nname=Neribox\nversion=2.5\nversionCode=20230827\nauthor=风又音理Neri\ndescription=$INFORMATION\nupdateJson=https://kazamataneri.tech/update.json" > $MODDIR/module.prop
+    echo -e "id=Neribox\nname=Neribox\nversion=2.5\nversionCode=20230829\nauthor=风又音理Neri\ndescription=$INFORMATION\nupdateJson=https://kazamataneri.tech/update.json" > $MODDIR/module.prop
 }
 
 function HELP () {
@@ -791,7 +791,7 @@ echo -e $HELP
 }
 
 LOG () {
-    $@ >> $NERIBOXDIR/log.txt 2>&1
+    $@ &>> $NERIBOXDIR/log.txt
 }
 
 function CONSOLE () {
@@ -893,7 +893,6 @@ function CONSOLE () {
     }
     if [ "$#" = "0" -o "$1" = "-help" -o "$1" = "-h" ];then
     HELP ALL
-    shift
     elif [ "$1" = "-version" -o "$1" = "-v" ];then
     ECHO_VERSION
     shift
