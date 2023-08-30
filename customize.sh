@@ -173,6 +173,7 @@ if [ -d $NERIBOXDIR/PID ];then
     ui_print "- 启用非重启模式"
     for x in $NERIBOXDIR/PID/clean $NERIBOXDIR/PID/aod $NERIBOXDIR/PID/daemon $NERIBOXDIR/PID/dashboard;do
     kill -9 $(cat $x)
+    cp $MODPATH/toolkit $MODDIR/toolkit
 done
     /system/bin/sh $MODPATH/service.sh
 fi
