@@ -8,11 +8,12 @@ BUSYBOX_PATH=/data/adb/ksu/bin/busybox
 SU="nsenter -t 1 -m --"
 fi
 
+NERIBOXDIR="/data/adb/Neribox"
 MODDIR="$($BUSYBOX_PATH dirname "$(readlink -f "$0")")"
 
-EXE_DIR="$MODDIR/bin"
-LIB_DIR="$MODDIR/lib"
-ETC_DIR="$MODDIR/etc"
+EXE_DIR="$NERIBOXDIR/sysroot/bin"
+LIB_DIR="$NERIBOXDIR/sysroot/lib"
+ETC_DIR="$NERIBOXDIR/sysroot/etc"
 CER_DIR="$ETC_DIR/certificate"
 PATH=$PATH:$EXE_DIR
 ALIST_PATH="$EXE_DIR/alist"
@@ -25,14 +26,13 @@ JQ_PATH="$EXE_DIR/jq"
 OPENSSL_PATH="$EXE_DIR/openssl"
 FUSERMOUNT_PATH="$EXE_DIR/fusermount3"
 
-NERIBOXDIR="/data/adb/Neribox"
-UPDATEDIR="$NERIBOXDIR/update-cache"
-
 CONFIG_PATH="$NERIBOXDIR/config.ini"
 ALIST_CONFIG_PATH="$ETC_DIR/config.json"
 ARIA2_CONFIG_PATH="$ETC_DIR/aria2c.conf"
-LIGHTTPD_CONFIG_PATH="$MODDIR/etc/lighttpd.conf"
+LIGHTTPD_CONFIG_PATH="$ETC_DIR/lighttpd.conf"
 RCLONE_CONFIG_PATH="$ETC_DIR/.rclone.conf"
+
+UPDATEDIR="$NERIBOXDIR/update-cache"
 
 function LANG () {
     local LANG=$(getprop | grep persist.sys.locale | grep -v persist.sys.localevar | $BUSYBOX_PATH awk '{print $2}')
@@ -323,7 +323,7 @@ function ALIST () {
         MKDIR
         GETARCH
         local PACK="alist_"$VERSION_UPDATE"_"$ALIST_ARCH".deb"
-        curl -# -o $UPDATEDIR/$PACK "$LINK""$PACK" && $BUSYBOX_PATH ar -p $UPDATEDIR/$PACK data.tar.xz >> $UPDATEDIR/data.tar.xz && $BUSYBOX_PATH tar -xf $UPDATEDIR/data.tar.xz -C $UPDATEDIR && mv -f $UPDATEDIR/data/data/com.termux/files/usr/bin/alist $ALIST_PATH && chown root:root $ALIST_PATH && chmod 744 $ALIST_PATH
+        curl -s -o $UPDATEDIR/$PACK "$LINK""$PACK" && $BUSYBOX_PATH ar -p $UPDATEDIR/$PACK data.tar.xz >> $UPDATEDIR/data.tar.xz && $BUSYBOX_PATH tar -xf $UPDATEDIR/data.tar.xz -C $UPDATEDIR && mv -f $UPDATEDIR/data/data/com.termux/files/usr/bin/alist $ALIST_PATH && chown root:root $ALIST_PATH && chmod 744 $ALIST_PATH
     }
     local TERMUX_REPO="$(CONFIG $CONFIG_PATH TERMUX_REPO)"
     local LINK="$TERMUX_REPO"/apt/termux-main/pool/main/a/alist/
@@ -358,7 +358,7 @@ function ARIA2 () {
     if [ "$ARIA2_PID" = "✘" ];then
         local ARIA2_HTTPS="$(CONFIG $CONFIG_PATH ARIA2_HTTPS)"
         if [ "$ARIA2_HTTPS" = true ];then
-        local PARM="--rpc-secure=true --rpc-certificate=/data/adb/modules/Neribox/etc/certificate/SERVER.pem --rpc-private-key=/data/adb/modules/Neribox/etc/certificate/SERVER-PRIVATE.key"
+        local PARM="--rpc-secure=true --rpc-certificate=$CER_DIR/SERVER.pem --rpc-private-key=$CER_DIR/SERVER-PRIVATE.key"
         fi
         $ARIA2_PATH $PARM --conf-path=$ARIA2_CONFIG_PATH -D
         if [ "$(CONFIG $CONFIG_PATH ARIANG_WEBUI)" = "true" ];then
@@ -377,7 +377,7 @@ function ARIA2 () {
     function DOWNLOAD () {
         MKDIR
         PACK="aria2-"$VERSION_UPDATE"-aarch64-linux-android-build1"
-        curl -# -LJo $UPDATEDIR/$PACK.zip https://github.com/aria2/aria2/releases/download/release-"$VERSION_UPDATE"/"$PACK".zip && $BUSYBOX_PATH unzip -d $UPDATEDIR -o -q $UPDATEDIR/$PACK.zip && mv -f $UPDATEDIR/$PACK/aria2c $ARIA2_PATH && chown root:root $ARIA2_PATH && chmod 744 $ARIA2_PATH
+        curl -s -LJo $UPDATEDIR/$PACK.zip https://github.com/aria2/aria2/releases/download/release-"$VERSION_UPDATE"/"$PACK".zip && $BUSYBOX_PATH unzip -d $UPDATEDIR -o -q $UPDATEDIR/$PACK.zip && mv -f $UPDATEDIR/$PACK/aria2c $ARIA2_PATH && chown root:root $ARIA2_PATH && chmod 744 $ARIA2_PATH
     }
     local VERSION_UPDATE=$($BUSYBOX_PATH wget -qO- -t1 -T2 --no-check-certificate "https://api.github.com/repos/aria2/aria2/releases/latest" | $JQ_PATH -r '.tag_name' | $BUSYBOX_PATH awk -F - '{print $2}' )
         if [ -n "$VERSION_UPDATE" ];then
@@ -526,7 +526,7 @@ function RCLONE () {
         MKDIR
         GETARCH
         PACK="rclone-android-21-"$RCLONE_ARCH""
-        curl -# -LJo $UPDATEDIR/$PACK.gz https://beta.rclone.org/v$VERSION_UPDATE/testbuilds/$PACK.gz && $BUSYBOX_PATH gzip -d $UPDATEDIR/$PACK.gz && mv -f $UPDATEDIR/$PACK $RCLONE_PATH && chown root:root $RCLONE_PATH && chmod 744 $RCLONE_PATH
+        curl -s -LJo $UPDATEDIR/$PACK.gz https://beta.rclone.org/v$VERSION_UPDATE/testbuilds/$PACK.gz && $BUSYBOX_PATH gzip -d $UPDATEDIR/$PACK.gz && mv -f $UPDATEDIR/$PACK $RCLONE_PATH && chown root:root $RCLONE_PATH && chmod 744 $RCLONE_PATH
     }
     local VERSION_UPDATE="$($BUSYBOX_PATH wget -qO- -t1 -T2 --no-check-certificate "https://api.github.com/repos/rclone/rclone/releases/latest" | $JQ_PATH -r '.tag_name' | $BUSYBOX_PATH sed s/"v"//g)"
     if [ -n "$VERSION_UPDATE" ];then
@@ -574,7 +574,7 @@ function FRPC () {
         MKDIR
         GETARCH
         PACK="frp_"$VERSION_UPDATE"_linux_"$FRPC_ARCH""
-        curl -# -LJo $UPDATEDIR/$PACK.tar.gz https://github.com/fatedier/frp/releases/download/v"$VERSION_UPDATE"/"$PACK".tar.gz && $BUSYBOX_PATH tar -xzf $UPDATEDIR/$PACK.tar.gz -C $UPDATEDIR && mv -f $UPDATEDIR/$PACK/frpc $FRPC_PATH && chown root:root $FRPC_PATH && chmod 744 $FRPC_PATH
+        curl -s -LJo $UPDATEDIR/$PACK.tar.gz https://github.com/fatedier/frp/releases/download/v"$VERSION_UPDATE"/"$PACK".tar.gz && $BUSYBOX_PATH tar -xzf $UPDATEDIR/$PACK.tar.gz -C $UPDATEDIR && mv -f $UPDATEDIR/$PACK/frpc $FRPC_PATH && chown root:root $FRPC_PATH && chmod 744 $FRPC_PATH
     }
     local VERSION_UPDATE=$($BUSYBOX_PATH wget -qO- -t1 -T2 --no-check-certificate "https://api.github.com/repos/fatedier/frp/releases/latest" | $JQ_PATH -r '.tag_name' | $BUSYBOX_PATH sed s/"v"//g )
     if [ -n "$VERSION_UPDATE" ];then
@@ -756,7 +756,7 @@ function DASHBOARD () {
     done
     }
     INFORMATION_PRINT $STATUSBAR
-    echo -e "id=Neribox\nname=Neribox\nversion=2.5\nversionCode=20230829\nauthor=风又音理Neri\ndescription=$INFORMATION\nupdateJson=https://kazamataneri.tech/update.json" > $MODDIR/module.prop
+    echo -e "id=Neribox\nname=Neribox\nversion=2.6\nversionCode=20230830\nauthor=风又音理Neri\ndescription=$INFORMATION\nupdateJson=https://kazamataneri.tech/update.json" > $MODDIR/module.prop
 }
 
 function HELP () {

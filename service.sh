@@ -6,13 +6,14 @@ BUSYBOX_PATH=/data/adb/ksu/bin/busybox
 fi
 
 MODDIR="$($BUSYBOX_PATH dirname "$(readlink -f "$0")")"
-LIB_DIR="$MODDIR/lib"
-ETC_DIR="$MODDIR/etc"
-ARIA2_CONFIG_PATH="$MODDIR/etc/aria2c.conf"
 
 NERIBOXDIR="/data/adb/Neribox"
 UPDATEDIR="$NERIBOXDIR/update-cache"
 CONFIG_PATH="$NERIBOXDIR/config.ini"
+
+LIB_DIR="$NERIBOXDIR/sysroot/lib"
+ETC_DIR="$MODDIR/sysroot/etc"
+ARIA2_CONFIG_PATH="$ETC_DIR/aria2c.conf"
 
 mkdir -p $NERIBOXDIR/PID
 
@@ -72,10 +73,10 @@ fi
 
 function KEEP_DAEMON () {
     while true;do
-        local ALIST_PID="$($BUSYBOX_PATH ps | grep "$MODDIR/bin/alist server --data $ETC_DIR" | grep -v "grep" | $BUSYBOX_PATH awk '{print $1}')"
-        local ARIA2_PID="$($BUSYBOX_PATH ps | grep "$MODDIR/bin/aria2c -m $LIBDIR --conf-path=$ARIA2_CONFIG_PATH -D" | grep -v "grep" | $BUSYBOX_PATH awk '{print $1}')"
-        local RCLONE_PID="$($BUSYBOX_PATH ps | grep "$MODDIR/bin/rclone mount" | grep -v "grep" | $BUSYBOX_PATH awk '{print $1}')"
-        local FRPC_PID="$($BUSYBOX_PATH ps | grep $MODDIR/bin/frpc | grep -v -e "grep" -e "-v" | $BUSYBOX_PATH awk '{print $1}')"
+        local ALIST_PID="$($BUSYBOX_PATH ps | grep "$NERIBOXDIR/sysroot/bin/alist server --data $ETC_DIR" | grep -v "grep" | $BUSYBOX_PATH awk '{print $1}')"
+        local ARIA2_PID="$($BUSYBOX_PATH ps | grep "$NERIBOXDIR/sysroot/bin/aria2c -m $LIBDIR --conf-path=$ARIA2_CONFIG_PATH -D" | grep -v "grep" | $BUSYBOX_PATH awk '{print $1}')"
+        local RCLONE_PID="$($BUSYBOX_PATH ps | grep "$NERIBOXDIR/sysroot/bin/rclone mount" | grep -v "grep" | $BUSYBOX_PATH awk '{print $1}')"
+        local FRPC_PID="$($BUSYBOX_PATH ps | grep $NERIBOXDIR/sysroot/bin/frpc | grep -v -e "grep" -e "-v" | $BUSYBOX_PATH awk '{print $1}')"
         ALIST_DAEMON
         ARIA2_DAEMON
         RCLONE_DAEMON

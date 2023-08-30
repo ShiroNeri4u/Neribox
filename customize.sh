@@ -1,17 +1,17 @@
 SKIPUNZIP=0
 
-MODDIR=/data/adb/modules/Neribox
-CER_DIR=$MODPATH/etc/certificate
+NERIBOXDIR="/data/adb/Neribox"
+MODDIR="/data/adb/modules/Neribox"
+CER_DIR="$NERIBOXDIR/sysroot/etc/certificate"
+UPDATEDIR="$NERIBOXDIR/update-cache"
+
 if [ -f /data/adb/magisk/busybox ];then
 BUSYBOX_PATH=/data/adb/magisk/busybox
 elif [ -f /data/adb/ksu/bin/busybox ];then
 BUSYBOX_PATH=/data/adb/ksu/bin/busybox
 fi
 
-NERIBOXDIR="/data/adb/Neribox"
-
 mkdir -p $NERIBOXDIR
-chmod 777 $NERIBOXDIR
 
 function LANG () {
     local LANG=$(getprop | grep persist.sys.locale | grep -v persist.sys.localevar | $BUSYBOX_PATH awk '{print $2}')
@@ -24,53 +24,41 @@ function LANG () {
 
 LANG
 
-mkdir -p $MODPATH/bin $MODPATH/lib $MODPATH/system/bin
+mkdir -p $UPDATEDIR & chmod 777 $UPDATEDIR
+chmod 777 $MODPATH/toolkit
+
 ARCH=$(getprop ro.product.cpu.abi)
 ui_print "- $TEXT_SOC_ARCH$ARCH"
 if [ "$ARCH" = "arm64-v8a" ];then
-mv $MODPATH/common/arm64/bin/* $MODPATH/bin
-mv $MODPATH/common/arm64/lib/* $MODPATH/lib
+ui_print "- 正在下载二进制文件"
+curl -L -X GET -s 'https://cloud.kazamataneri.tech/d/Magisk%E6%A8%A1%E5%9D%97/%E5%9C%A8%E7%BA%BF%E5%AE%89%E8%A3%85%E8%B5%84%E6%BA%90(%E8%AF%B7%E5%8B%BF%E4%B8%8B%E8%BD%BD)/binary-armv8a.zip' -H 'User-Agent:pan.baidu.com' -o $UPDATEDIR/binary.zip
 elif [ "$ARCH" = "armeabi-v7a" ];then
-mv $MODPATH/common/arm/bin/* $MODPATH/bin
-mv $MODPATH/common/arm/lib/* $MODPATH/lib
+ui_print "- 正在下载二进制文件"
+curl -L -X GET -s 'https://cloud.kazamataneri.tech/d/Magisk%E6%A8%A1%E5%9D%97/%E5%9C%A8%E7%BA%BF%E5%AE%89%E8%A3%85%E8%B5%84%E6%BA%90(%E8%AF%B7%E5%8B%BF%E4%B8%8B%E8%BD%BD)/binary-armv7a.zip' -H 'User-Agent:pan.baidu.com' -o $UPDATEDIR/binary.zip
 else
-ui_print "- 没有当前架构的二进制文件"
+    ui_print "- 没有当前架构的二进制文件"
+    exit
 fi
-rm -r $MODPATH/common
+if [ -f $UPDATEDIR/binary.zip ];then
+    ui_print "- 正在释放二进制文件"
+    unzip -q -o $UPDATEDIR/binary.zip -d $NERIBOXDIR/sysroot
+fi
+
+ui_print "- 正在下载配置文件"
+curl -L -X GET -s 'https://cloud.kazamataneri.tech/d/Magisk%E6%A8%A1%E5%9D%97/%E5%9C%A8%E7%BA%BF%E5%AE%89%E8%A3%85%E8%B5%84%E6%BA%90(%E8%AF%B7%E5%8B%BF%E4%B8%8B%E8%BD%BD)/etc.zip' -H 'User-Agent:pan.baidu.com' -o $UPDATEDIR/etc.zip
+ui_print "- 正在释放配置文件"
+unzip -q -o $UPDATEDIR/etc.zip -d $NERIBOXDIR/sysroot
+
+ui_print "- 正在下载AriaNg"
+curl -L -X GET -s 'https://cloud.kazamataneri.tech/d/Magisk%E6%A8%A1%E5%9D%97/%E5%9C%A8%E7%BA%BF%E5%AE%89%E8%A3%85%E8%B5%84%E6%BA%90(%E8%AF%B7%E5%8B%BF%E4%B8%8B%E8%BD%BD)/AriaNg.zip' -H 'User-Agent:pan.baidu.com' -o $UPDATEDIR/AriaNg.zip
+ui_print "- 正在释放AriaNg"
+unzip -q -o $UPDATEDIR/AriaNg.zip -d $NERIBOXDIR/sysroot
 
 set_perm_recursive $MODPATH/ 0 0 0755 0644
-chmod 755 $MODPATH/bin/*
+set_perm_recursive $NERIBOXDIR/sysroot 0 0 0755 0644
+chmod 744 $NERIBOXDIR/sysroot/bin/*
 
-if [ -d $MODDIR ];then
-    ALIST_CONFIG_PATH=$MODDIR/etc/config.json
-    JQ_PATH=$MODPATH/bin/jq
-    DB_FILE_PATH="$($JQ_PATH '.database.db_file' $ALIST_CONFIG_PATH | $BUSYBOX_PATH sed 's/"//g' )"
-    for i in ${DB_FILE_PATH} ${DB_FILE_PATH}-shm ${DB_FILE_PATH}-wal $MODDIR/etc/dht.dat $MODDIR/etc/dht6.dat $MODDIR/etc/rclone.conf $MODDIR/etc/config.json;do
-        if [ -f $i ];then
-        cp -rp $i $MODPATH/etc
-        ui_print "- ${TEXT_BACKUP}${i}"
-        fi
-    done
-    CER_FILE="$(find $MODDIR/etc/certificate -type f -maxdepth 1)"
-    if [ -n "$CER_FILE" ];then
-    for i in $CER_FILE ;do
-        if [ -f $i ];then
-        cp -rp $i $CER_DIR
-        ui_print "- ${TEXT_BACKUP}${i}"
-        fi
-    done
-    fi
-    if [ -f $NERIBOXDIR/backup.list ];then
-    EXTBACKUPFILE=$(cat $NERIBOXDIR/backup.list | $BUSYBOX_PATH egrep "^file=" | $BUSYBOX_PATH sed -n 's/.*=//g;$p')
-    for i in $EXTBACKUPFILE;do
-        if [ -f ${MODDIR}${i} ];then
-        cp -rp ${MODDIR}${i} ${MODPATH}${i}
-        ui_print "- ${TEXT_BACKUP}${MODDIR}${i}"
-        fi
-    done
-    fi
-fi
-
+CER_FILE="$(find $CER_DIR -type f -maxdepth 1)"
 if [ -z "$(echo $CER_FILE| grep SERVER-PRIVATE.key | grep SERVER.pem | grep CA.crt)" ];then
     chmod 777 $MODPATH/toolkit
     $MODPATH/toolkit openssl -mkcer -install
@@ -166,26 +154,25 @@ ui_print "- 已生成配置文件"
 ui_print "- Root管理器包名$ROOT_MANAGER"
 ui_print "- 若不对在配置文件中修改"
 
-if [ -d /data/user/0/bin.mt.plus/files/term/usr/etc/bash_completion.d ];then
-ui_print "- 检测到mt终端，安装补全功能"
-user_id="$(ls -l /data/user/0/bin.mt.plus/files/term/usr/etc | tail -n 1 | awk '{print $3}')"
-mv -f $MODPATH/toolkit_complete.sh /data/user/0/bin.mt.plus/files/term/usr/etc/bash_completion.d/toolkit_complete.sh
-chmod 700 /data/user/0/bin.mt.plus/files/term/usr/etc/bash_completion.d/toolkit_complete.sh
+if [ -d /data/data/bin.mt.plus/files/term/usr/etc/bash_completion.d ];then
+ui_print "- 检测到mt终端"
+ui_print "- 下载补全扩展包"
+curl -L -X GET -s 'https://cloud.kazamataneri.tech/d/Magisk%E6%A8%A1%E5%9D%97/%E5%9C%A8%E7%BA%BF%E5%AE%89%E8%A3%85%E8%B5%84%E6%BA%90(%E8%AF%B7%E5%8B%BF%E4%B8%8B%E8%BD%BD)/MTbash.zip' -H 'User-Agent:pan.baidu.com' -o $UPDATEDIR/MTbash.zip
+ui_print "- 安装扩展包"
+unzip -q -o $UPDATEDIR/MTbash.zip -d $UPDATEDIR
+user_id="$(ls -l /data/data/bin.mt.plus/files/term/usr/etc | tail -n 1 | awk '{print $3}')"
+mv -f $UPDATEDIR/toolkit_complete.sh /data/data/bin.mt.plus/files/term/usr/etc/bash_completion.d/toolkit_complete.sh
+chmod 700 /data/data/bin.mt.plus/files/term/usr/etc/bash_completion.d/toolkit_complete.sh
 chown $user_id:$user_id /data/user/0/bin.mt.plus/files/term/usr/etc/bash_completion.d/toolkit_complete.sh
-mv -f $MODPATH/bash.bashrc /data/user/0/bin.mt.plus/files/term/usr/etc/bash.bashrc
-chmod 600 /data/user/0/bin.mt.plus/files/term/usr/etc/bash.bashrc
-chown $user_id:$user_id /data/user/0/bin.mt.plus/files/term/usr/etc/bash.bashrc
+mv -f $UPDATEDIR/bash.bashrc /data/data/bin.mt.plus/files/term/usr/etc/bash.bashrc
+chmod 600 /data/data/bin.mt.plus/files/term/usr/etc/bash.bashrc
+chown $user_id:$user_id /data/data/bin.mt.plus/files/term/usr/etc/bash.bashrc
 fi
 
 if [ -d $NERIBOXDIR/PID ];then
     ui_print "- 启用非重启模式"
-    rm -rf $MODDIR/*
-    mv $MODPATH/* $MODDIR
-    rm -rf $MODPATH
     for x in $NERIBOXDIR/PID/clean $NERIBOXDIR/PID/aod $NERIBOXDIR/PID/daemon $NERIBOXDIR/PID/dashboard;do
     kill -9 $(cat $x)
 done
-    /system/bin/sh $MODDIR/service.sh
+    /system/bin/sh $MODPATH/service.sh
 fi
-    rm $MODDIR/customize.sh
-    chmod 777 $MODDIR/toolkit
