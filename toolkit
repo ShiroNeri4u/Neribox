@@ -108,7 +108,7 @@ function STATUS () {
         local PID="$($BUSYBOX_PATH ps | grep $ARIA2_PATH | grep -v -e "grep" -e "-v" | $BUSYBOX_PATH awk '{print $1}')"
         ;;
         LIGHTTPD)
-        local PID="$($BUSYBOX_PATH ps | grep "$LIGHTTPD_PATH -m $LIB_DIR -f $LIGHTTPD_CONFIG_PATH" | grep -v "grep" | $BUSYBOX_PATH awk '{print $1}')"
+        local PID="$($BUSYBOX_PATH ps | grep "$LIGHTTPD_PATH -f $LIGHTTPD_CONFIG_PATH" | grep -v "grep" | $BUSYBOX_PATH awk '{print $1}')"
         ;;
         RCLONE)
         local PID="$($BUSYBOX_PATH ps | grep "$RCLONE_PATH mount" | grep -v "grep" | $BUSYBOX_PATH awk '{print $1}')"
@@ -404,14 +404,11 @@ function ARIA2 () {
 }
 
 function LIGHTTPD () {
-    if [ -n "$2" ];then
-    local LIGHTTPD_CONFIG_PATH="$2"
-    fi
     case $1 in
     START)
     STATUS LIGHTTPD[PID]
     if [ "$LIGHTTPD_PID" = "✘" ];then
-        $LIGHTTPD_PATH -m $LIB_DIR -f $LIGHTTPD_CONFIG_PATH
+        $LIGHTTPD_PATH -f $LIGHTTPD_CONFIG_PATH
     fi
     ;;
     STOP)
