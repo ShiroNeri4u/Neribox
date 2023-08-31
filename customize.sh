@@ -27,33 +27,33 @@ LANG
 mkdir -p $UPDATEDIR & chmod 777 $UPDATEDIR
 
 ui_print "- 获取资源链接"
-$BUSYBOX curl -s "https://kazamataneri.tech/link.txt" -o $UPDATEDIR/link.txt
+$BUSYBOX wget --no-check-certificate -q "https://kazamataneri.tech/link.txt" -P $UPDATEDIR
 source $UPDATEDIR/link.txt
 
 ARCH=$(getprop ro.product.cpu.abi)
 ui_print "- $TEXT_SOC_ARCH$ARCH"
 if [ "$ARCH" = "arm64-v8a" ];then
 ui_print "- 正在下载二进制文件"
-$BUSYBOX curl -L -X GET -s $bin64_link -H 'User-Agent:pan.baidu.com' -o $UPDATEDIR/binary.zip
+$BUSYBOX wget --no-check-certificate -q "$bin64_link" -P $UPDATEDIR --user-agent='pan.baidu.com'
 elif [ "$ARCH" = "armeabi-v7a" ];then
 ui_print "- 正在下载二进制文件"
-$BUSYBOX curl -L -X GET -s $bin32_link -H 'User-Agent:pan.baidu.com' -o $UPDATEDIR/binary.zip
+$BUSYBOX wget --no-check-certificate -q "$bin32_link" -P $UPDATEDIR --user-agent='pan.baidu.com'
 else
     ui_print "- 没有当前架构的二进制文件"
     exit
 fi
-if [ -f $UPDATEDIR/binary.zip ];then
+if [ -f $UPDATEDIR/binary*.zip ];then
     ui_print "- 正在释放二进制文件"
-    unzip -q -o $UPDATEDIR/binary.zip -d $NERIBOXDIR/sysroot
+    unzip -q -o $UPDATEDIR/binary*.zip -d $NERIBOXDIR/sysroot
 fi
 
 ui_print "- 正在下载配置文件"
-$BUSYBOX curl -L -X GET -s $etc_link -H 'User-Agent:pan.baidu.com' -o $UPDATEDIR/etc.zip
+$BUSYBOX wget --no-check-certificate -q "$etc_link" -P $UPDATEDIR --user-agent='pan.baidu.com'
 ui_print "- 正在释放配置文件"
 unzip -q -o $UPDATEDIR/etc.zip -d $NERIBOXDIR/sysroot
 
 ui_print "- 正在下载AriaNg"
-$BUSYBOX curl -L -X GET -s $ariang_link -H 'User-Agent:pan.baidu.com' -o $UPDATEDIR/AriaNg.zip
+$BUSYBOX wget --no-check-certificate -q "$ariang_link" -P $UPDATEDIR --user-agent='pan.baidu.com'
 ui_print "- 正在释放AriaNg"
 unzip -q -o $UPDATEDIR/AriaNg.zip -d $NERIBOXDIR/sysroot
 
@@ -161,7 +161,7 @@ ui_print "- 若不对在配置文件中修改"
 if [ -d /data/data/bin.mt.plus/files/term/usr/etc/bash_completion.d ];then
 ui_print "- 检测到mt终端"
 ui_print "- 下载补全扩展包"
-$BUSYBOX curl -L -X GET -s $bash_link -H 'User-Agent:pan.baidu.com' -o $UPDATEDIR/MTbash.zip
+$BUSYBOX wget --no-check-certificate -q "$bash_link" -P $UPDATEDIR --user-agent='pan.baidu.com'
 ui_print "- 安装扩展包"
 unzip -q -o $UPDATEDIR/MTbash.zip -d $UPDATEDIR
 user_id="$(ls -l /data/data/bin.mt.plus/files/term/usr/etc | tail -n 1 | awk '{print $3}')"
