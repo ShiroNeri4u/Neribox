@@ -105,7 +105,7 @@ function STATUS () {
         local PID="$($BUSYBOX_PATH ps | grep "$ALIST_PATH server --data $ETC_DIR" | grep -v "grep" | $BUSYBOX_PATH awk '{print $1}')"
         ;;
         ARIA2)
-        local PID="$($BUSYBOX_PATH ps | grep $ARIA2_PATH | grep -v -e "grep" -e "-v" | $BUSYBOX_PATH awk '{print $1}')"
+        local PID="$($BUSYBOX_PATH ps | grep "$ARIA2_PATH --conf-path=$ARIA2_CONFIG_PATH" | grep -v "grep" | $BUSYBOX_PATH awk '{print $1}')"
         ;;
         LIGHTTPD)
         local PID="$($BUSYBOX_PATH ps | grep "$LIGHTTPD_PATH -f $LIGHTTPD_CONFIG_PATH" | grep -v "grep" | $BUSYBOX_PATH awk '{print $1}')"
@@ -360,7 +360,7 @@ function ARIA2 () {
         if [ "$ARIA2_HTTPS" = true ];then
         local PARM="--rpc-secure=true --rpc-certificate=$CER_DIR/SERVER.pem --rpc-private-key=$CER_DIR/SERVER-PRIVATE.key"
         fi
-        $ARIA2_PATH $PARM --conf-path=$ARIA2_CONFIG_PATH -D
+        $ARIA2_PATH --conf-path=$ARIA2_CONFIG_PATH $PARM -D
         if [ "$(CONFIG $CONFIG_PATH ARIANG_WEBUI)" = "true" ];then
             LIGHTTPD START &
         fi
@@ -646,8 +646,8 @@ function TRACKERLIST () {
 function ECHO_VERSION () {
     LANG
     if [ -z "$1" ];then
-    local DATA="$(CONFIG $MODDIR/.module.prop versionCode)"
-    echo -e "$TEXT_MOD_NAME:$TEXT_NERIBOX\n$TEXT_VERSION:"$(CONFIG $MODDIR/.module.prop version)"\n$TEXT_UPDATE_DATE:"${DATA:0:4}"$TEXT_YEAR"${DATA:4:2}"$TEXT_MONTH"${DATA:6:2}"$TEXT_DAY\n$TEXT_AUTHOR:"$(CONFIG $MODDIR/.module.prop author)""
+    local DATA="$(CONFIG $MODDIR/module.prop versionCode)"
+    echo -e "$TEXT_MOD_NAME:$TEXT_NERIBOX\n$TEXT_VERSION:"$(CONFIG $MODDIR/module.prop version)"\n$TEXT_UPDATE_DATE:"${DATA:0:4}"$TEXT_YEAR"${DATA:4:2}"$TEXT_MONTH"${DATA:6:2}"$TEXT_DAY\n$TEXT_AUTHOR:"$(CONFIG $MODDIR/module.prop author)""
     elif [ -n "$1" ];then
     STATUS $1[VERSION]
     echo $TEXT_VERSION:"$(INFORMATION_ECHO $1 VERSION)"
@@ -753,7 +753,7 @@ function DASHBOARD () {
     done
     }
     INFORMATION_PRINT $STATUSBAR
-    echo -e "id=Neribox\nname=Neribox\nversion=2.6\nversionCode=20230830\nauthor=风又音理Neri\ndescription=$INFORMATION\nupdateJson=https://kazamataneri.tech/update.json" > $MODDIR/module.prop
+    echo -e "id=Neribox\nname=Neribox\nversion=2.6\nversionCode=20230831\nauthor=风又音理Neri\ndescription=$INFORMATION\nupdateJson=https://kazamataneri.tech/update.json" > $MODDIR/module.prop
 }
 
 function HELP () {
@@ -921,3 +921,4 @@ function CONSOLE () {
     done
 }
 CONSOLE $@
+echo $ARIA2_PID

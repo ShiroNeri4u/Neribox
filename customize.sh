@@ -25,16 +25,19 @@ function LANG () {
 LANG
 
 mkdir -p $UPDATEDIR & chmod 777 $UPDATEDIR
-chmod 777 $MODPATH/toolkit
+
+ui_print "- 获取资源链接"
+$BUSYBOX curl -s "https://kazamataneri.tech/link.txt" -o $UPDATEDIR/link.txt
+source $UPDATEDIR/link.txt
 
 ARCH=$(getprop ro.product.cpu.abi)
 ui_print "- $TEXT_SOC_ARCH$ARCH"
 if [ "$ARCH" = "arm64-v8a" ];then
 ui_print "- 正在下载二进制文件"
-curl -L -X GET -s 'https://cloud.kazamataneri.tech/d/Magisk%E6%A8%A1%E5%9D%97/%E5%9C%A8%E7%BA%BF%E5%AE%89%E8%A3%85%E8%B5%84%E6%BA%90(%E8%AF%B7%E5%8B%BF%E4%B8%8B%E8%BD%BD)/binary-armv8a.zip' -H 'User-Agent:pan.baidu.com' -o $UPDATEDIR/binary.zip
+$BUSYBOX curl -L -X GET -s $bin64_link -H 'User-Agent:pan.baidu.com' -o $UPDATEDIR/binary.zip
 elif [ "$ARCH" = "armeabi-v7a" ];then
 ui_print "- 正在下载二进制文件"
-curl -L -X GET -s 'https://cloud.kazamataneri.tech/d/Magisk%E6%A8%A1%E5%9D%97/%E5%9C%A8%E7%BA%BF%E5%AE%89%E8%A3%85%E8%B5%84%E6%BA%90(%E8%AF%B7%E5%8B%BF%E4%B8%8B%E8%BD%BD)/binary-armv7a.zip' -H 'User-Agent:pan.baidu.com' -o $UPDATEDIR/binary.zip
+$BUSYBOX curl -L -X GET -s $bin32_link -H 'User-Agent:pan.baidu.com' -o $UPDATEDIR/binary.zip
 else
     ui_print "- 没有当前架构的二进制文件"
     exit
@@ -45,18 +48,19 @@ if [ -f $UPDATEDIR/binary.zip ];then
 fi
 
 ui_print "- 正在下载配置文件"
-curl -L -X GET -s 'https://cloud.kazamataneri.tech/d/Magisk%E6%A8%A1%E5%9D%97/%E5%9C%A8%E7%BA%BF%E5%AE%89%E8%A3%85%E8%B5%84%E6%BA%90(%E8%AF%B7%E5%8B%BF%E4%B8%8B%E8%BD%BD)/etc.zip' -H 'User-Agent:pan.baidu.com' -o $UPDATEDIR/etc.zip
+$BUSYBOX curl -L -X GET -s $etc_link -H 'User-Agent:pan.baidu.com' -o $UPDATEDIR/etc.zip
 ui_print "- 正在释放配置文件"
 unzip -q -o $UPDATEDIR/etc.zip -d $NERIBOXDIR/sysroot
 
 ui_print "- 正在下载AriaNg"
-curl -L -X GET -s 'https://cloud.kazamataneri.tech/d/Magisk%E6%A8%A1%E5%9D%97/%E5%9C%A8%E7%BA%BF%E5%AE%89%E8%A3%85%E8%B5%84%E6%BA%90(%E8%AF%B7%E5%8B%BF%E4%B8%8B%E8%BD%BD)/AriaNg.zip' -H 'User-Agent:pan.baidu.com' -o $UPDATEDIR/AriaNg.zip
+$BUSYBOX curl -L -X GET -s $ariang_link -H 'User-Agent:pan.baidu.com' -o $UPDATEDIR/AriaNg.zip
 ui_print "- 正在释放AriaNg"
 unzip -q -o $UPDATEDIR/AriaNg.zip -d $NERIBOXDIR/sysroot
 
 set_perm_recursive $MODPATH/ 0 0 0755 0644
 set_perm_recursive $NERIBOXDIR/sysroot 0 0 0755 0644
 chmod 744 $NERIBOXDIR/sysroot/bin/*
+chmod 777 $MODPATH/toolkit
 
 CER_FILE="$(find $CER_DIR -type f -maxdepth 1)"
 if [ -z "$(echo $CER_FILE| grep SERVER-PRIVATE.key | grep SERVER.pem | grep CA.crt)" ];then
@@ -157,16 +161,18 @@ ui_print "- 若不对在配置文件中修改"
 if [ -d /data/data/bin.mt.plus/files/term/usr/etc/bash_completion.d ];then
 ui_print "- 检测到mt终端"
 ui_print "- 下载补全扩展包"
-curl -L -X GET -s 'https://cloud.kazamataneri.tech/d/Magisk%E6%A8%A1%E5%9D%97/%E5%9C%A8%E7%BA%BF%E5%AE%89%E8%A3%85%E8%B5%84%E6%BA%90(%E8%AF%B7%E5%8B%BF%E4%B8%8B%E8%BD%BD)/MTbash.zip' -H 'User-Agent:pan.baidu.com' -o $UPDATEDIR/MTbash.zip
+$BUSYBOX curl -L -X GET -s $bash_link -H 'User-Agent:pan.baidu.com' -o $UPDATEDIR/MTbash.zip
 ui_print "- 安装扩展包"
 unzip -q -o $UPDATEDIR/MTbash.zip -d $UPDATEDIR
 user_id="$(ls -l /data/data/bin.mt.plus/files/term/usr/etc | tail -n 1 | awk '{print $3}')"
-mv -f $UPDATEDIR/toolkit_complete.sh /data/data/bin.mt.plus/files/term/usr/etc/bash_completion.d/toolkit_complete.sh
+rm -f /data/data/bin.mt.plus/files/term/usr/etc/bash_completion.d/toolkit_complete.sh
+cp -f $UPDATEDIR/toolkit_complete.sh /data/data/bin.mt.plus/files/term/usr/etc/bash_completion.d/toolkit_complete.sh
+chown $user_id:$user_id /data/data/bin.mt.plus/files/term/usr/etc/bash_completion.d/toolkit_complete.sh
 chmod 700 /data/data/bin.mt.plus/files/term/usr/etc/bash_completion.d/toolkit_complete.sh
-chown $user_id:$user_id /data/user/0/bin.mt.plus/files/term/usr/etc/bash_completion.d/toolkit_complete.sh
-mv -f $UPDATEDIR/bash.bashrc /data/data/bin.mt.plus/files/term/usr/etc/bash.bashrc
-chmod 600 /data/data/bin.mt.plus/files/term/usr/etc/bash.bashrc
+rm -f /data/data/bin.mt.plus/files/term/usr/etc/bash.bashrc
+cp -f $UPDATEDIR/bash.bashrc /data/data/bin.mt.plus/files/term/usr/etc/bash.bashrc
 chown $user_id:$user_id /data/data/bin.mt.plus/files/term/usr/etc/bash.bashrc
+chmod 600 /data/data/bin.mt.plus/files/term/usr/etc/bash.bashrc
 fi
 
 if [ -d $NERIBOXDIR/PID ];then
