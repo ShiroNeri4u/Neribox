@@ -175,11 +175,14 @@ chown $user_id:$user_id /data/data/bin.mt.plus/files/term/usr/etc/bash.bashrc
 chmod 600 /data/data/bin.mt.plus/files/term/usr/etc/bash.bashrc
 fi
 
-if [ -d $NERIBOXDIR/PID ];then
+if [ "$BUSYBOX_PATH" = "/data/adb/magisk/busybox" ];then
+    if [ -d $NERIBOXDIR/PID ];then
     ui_print "- 启用非重启模式"
     for x in $NERIBOXDIR/PID/clean $NERIBOXDIR/PID/aod $NERIBOXDIR/PID/daemon $NERIBOXDIR/PID/dashboard;do
     kill -9 $(cat $x)
-    cp $MODPATH/toolkit $MODDIR/toolkit
 done
-    /system/bin/sh $MODPATH/service.sh
+    cp -f $MODPATH/toolkit $MODDIR/toolkit
+    cp -f $MODPATH/service.sh $MODDIR/service.sh
+    /system/bin/sh $MODDIR/service.sh
+    fi
 fi
