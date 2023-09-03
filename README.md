@@ -12,7 +12,7 @@
 |[aria2](https://github.com/aria2/aria2)        | `1.36.0`  |NDK交叉编译|
 | [lighttpd](https://lighttpd.net/) | `1.4.71`  |NDK交叉编译|
 | [rclone](https://rclone.org/)   | `1.63.1`  |rclone官方构建(beta)|
-| [frpc](https://github.com/fatedier/frp)    | `0.51.3`  |NDK交叉编译|
+| [frpc](https://github.com/fatedier/frp)    | `0.51.3`  |官方构建|
 | [sqlite3](https://sqlite.org/)      | `3.42.0`   |NDK交叉编译|
 | [fusermount3](https://github.com/libfuse/libfuse) | `3.15.1` |NDK交叉编译|
 | [jq](https://github.com/jqlang/jq) | `1.6` |NDK交叉编译|
