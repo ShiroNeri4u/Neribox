@@ -5,11 +5,20 @@ MODDIR="/data/adb/modules/Neribox"
 CER_DIR="$NERIBOXDIR/sysroot/etc/certificate"
 UPDATEDIR="$NERIBOXDIR/update-cache"
 
-if [ -f /data/adb/magisk/busybox ];then
-BUSYBOX_PATH=/data/adb/magisk/busybox
-elif [ -f /data/adb/ksu/bin/busybox ];then
-BUSYBOX_PATH=/data/adb/ksu/bin/busybox
-fi
+case $(su -v | awk -F : '{print $2}') in
+    MAGISKSU)
+    SU_TYPE=MagiskSU
+    SU_VERSION=$(su -V)
+    BUSYBOX_PATH=/data/adb/magisk/busybox
+    ;;
+    KernelSU)
+    SU_TYPE=KernelSU
+    SU_VERSION=$(su -V)
+    BUSYBOX_PATH=/data/adb/ksu/bin/busybox
+    ;;
+esac
+
+ui_print "- Root type:$SU_TYPE Version:$SU_VERSION"
 
 mkdir -p $NERIBOXDIR
 
@@ -158,25 +167,7 @@ ui_print "- 已生成配置文件"
 ui_print "- Root管理器包名$ROOT_MANAGER"
 ui_print "- 若不对在配置文件中修改"
 
-if [ -d /data/data/bin.mt.plus/files/term/usr/etc/bash_completion.d ];then
-ui_print "- 检测到mt终端"
-ui_print "- 下载补全扩展包"
-$BUSYBOX wget --no-check-certificate -q "$bash_link" -P $UPDATEDIR --user-agent='pan.baidu.com'
-ui_print "- 安装扩展包"
-unzip -q -o $UPDATEDIR/MTbash.zip -d $UPDATEDIR
-user_id="$(ls -l /data/data/bin.mt.plus/files/term/usr/etc | tail -n 1 | awk '{print $3}')"
-rm -f /data/data/bin.mt.plus/files/term/usr/etc/bash_completion.d/toolkit_complete.sh
-cp -f $UPDATEDIR/toolkit_complete.sh /data/data/bin.mt.plus/files/term/usr/etc/bash_completion.d/toolkit_complete.sh
-chown $user_id:$user_id /data/data/bin.mt.plus/files/term/usr/etc/bash_completion.d/toolkit_complete.sh
-chmod 700 /data/data/bin.mt.plus/files/term/usr/etc/bash_completion.d/toolkit_complete.sh
-rm -f /data/data/bin.mt.plus/files/term/usr/etc/bash.bashrc
-cp -f $UPDATEDIR/bash.bashrc /data/data/bin.mt.plus/files/term/usr/etc/bash.bashrc
-chown $user_id:$user_id /data/data/bin.mt.plus/files/term/usr/etc/bash.bashrc
-chmod 600 /data/data/bin.mt.plus/files/term/usr/etc/bash.bashrc
-fi
-
-if [ "$BUSYBOX_PATH" = "/data/adb/magisk/busybox" ];then
-    if [ -d $NERIBOXDIR/PID ];then
+if [ -d $NERIBOXDIR/PID ];then
     ui_print "- 启用非重启模式"
     for x in $NERIBOXDIR/PID/clean $NERIBOXDIR/PID/aod $NERIBOXDIR/PID/daemon $NERIBOXDIR/PID/dashboard;do
     kill -9 $(cat $x)
@@ -184,5 +175,4 @@ done
     cp -f $MODPATH/toolkit $MODDIR/toolkit
     cp -f $MODPATH/service.sh $MODDIR/service.sh
     /system/bin/sh $MODDIR/service.sh
-    fi
 fi

@@ -1,9 +1,16 @@
 #!/system/bin/sh
-if [ -f /data/adb/magisk/busybox ];then
-BUSYBOX_PATH=/data/adb/magisk/busybox
-elif [ -f /data/adb/ksu/bin/busybox ];then
-BUSYBOX_PATH=/data/adb/ksu/bin/busybox
-fi
+case $(su -v | awk -F : '{print $2}') in
+    MAGISKSU)
+    SU_TYPE=MagiskSU
+    SU_VERSION=$(su -V)
+    BUSYBOX_PATH=/data/adb/magisk/busybox
+    ;;
+    KernelSU)
+    SU_TYPE=KernelSU
+    SU_VERSION=$(su -V)
+    BUSYBOX_PATH=/data/adb/ksu/bin/busybox
+    ;;
+esac
 
 MODDIR="$($BUSYBOX_PATH dirname "$(readlink -f "$0")")"
 
@@ -117,6 +124,7 @@ function AOD_DAEMON () {
             fi
             sleep 3
         done
+        sleep 3
     done
 }
 

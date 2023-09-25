@@ -1,12 +1,18 @@
 #!/system/bin/sh
+case $(su -v | awk -F : '{print $2}') in
+    MAGISKSU)
+    SU_TYPE=MagiskSU
+    SU_VERSION=$(su -V)
+    BUSYBOX_PATH=/data/adb/magisk/busybox
+    ;;
+    KernelSU)
+    SU_TYPE=KernelSU
+    SU_VERSION=$(su -V)
+    BUSYBOX_PATH=/data/adb/ksu/bin/busybox
+    ;;
+esac
 
-if [ -f /data/adb/magisk/busybox ];then
-BUSYBOX_PATH=/data/adb/magisk/busybox
-SU="magisk su -M -c"
-elif [ -f /data/adb/ksu/bin/busybox ];then
-BUSYBOX_PATH=/data/adb/ksu/bin/busybox
-SU="nsenter -t 1 -m --"
-fi
+SU="su -M -c"
 
 NERIBOXDIR="/data/adb/Neribox"
 MODDIR="$($BUSYBOX_PATH dirname "$(readlink -f "$0")")"
@@ -33,6 +39,12 @@ LIGHTTPD_CONFIG_PATH="$ETC_DIR/lighttpd.conf"
 RCLONE_CONFIG_PATH="$ETC_DIR/.rclone.conf"
 
 UPDATEDIR="$NERIBOXDIR/update-cache"
+
+id=Neribox
+name=Neribox
+version=2.6
+versionCode=20230925
+author=风又音理Neri
 
 function LANG () {
     local LANG=$(getprop | grep persist.sys.locale | grep -v persist.sys.localevar | $BUSYBOX_PATH awk '{print $2}')
@@ -753,7 +765,7 @@ function DASHBOARD () {
     done
     }
     INFORMATION_PRINT $STATUSBAR
-    echo -e "id=Neribox\nname=Neribox\nversion=2.6\nversionCode=20230902\nauthor=风又音理Neri\ndescription=$INFORMATION\nupdateJson=https://kazamataneri.tech/update.json" > $MODDIR/module.prop
+    echo -e "id=$id\nname=$name\nversion=$version\nversionCode=$versionCode\nauthor=$author\ndescription=$INFORMATION\nupdateJson=https://kazamataneri.tech/update.json" > $MODDIR/module.prop
 }
 
 function HELP () {
