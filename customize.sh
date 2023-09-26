@@ -53,18 +53,18 @@ else
 fi
 if [ -f $UPDATEDIR/binary*.zip ];then
     ui_print "- 正在释放二进制文件"
-    unzip -q -o $UPDATEDIR/binary*.zip -d $NERIBOXDIR/sysroot
+    unzip -f -q -o $UPDATEDIR/binary*.zip -d $NERIBOXDIR/sysroot
 fi
 
 ui_print "- 正在下载配置文件"
 $BUSYBOX wget --no-check-certificate -q "$etc_link" -P $UPDATEDIR --user-agent='pan.baidu.com'
 ui_print "- 正在释放配置文件"
-unzip -q -o $UPDATEDIR/etc.zip -d $NERIBOXDIR/sysroot
+unzip -f -q -o $UPDATEDIR/etc.zip -d $NERIBOXDIR/sysroot
 
 ui_print "- 正在下载AriaNg"
 $BUSYBOX wget --no-check-certificate -q "$ariang_link" -P $UPDATEDIR --user-agent='pan.baidu.com'
 ui_print "- 正在释放AriaNg"
-unzip -q -o $UPDATEDIR/AriaNg.zip -d $NERIBOXDIR/sysroot
+unzip -f -q -o $UPDATEDIR/AriaNg.zip -d $NERIBOXDIR/sysroot
 
 set_perm_recursive $MODPATH/ 0 0 0755 0644
 set_perm_recursive $NERIBOXDIR/sysroot 0 0 0755 0644
