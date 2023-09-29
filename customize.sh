@@ -20,7 +20,7 @@ esac
 
 ui_print "- Root type:$SU_TYPE Version:$SU_VERSION"
 
-mkdir -p $NERIBOXDIR
+mkdir -p $NERIBOXDIR/sysroot
 
 function LANG () {
     local LANG=$(getprop | grep persist.sys.locale | grep -v persist.sys.localevar | $BUSYBOX_PATH awk '{print $2}')
@@ -53,17 +53,29 @@ else
 fi
 if [ -f $UPDATEDIR/binary*.zip ];then
     ui_print "- 正在释放二进制文件"
+    if [ -f $NERIBOXDIR/sysroot/bin/* ];then
+        rm -rf $NERIBOXDIR/sysroot/bin
+    fi
+    if [ -f $NERIBOXDIR/sysroot/lib/* ];then
+        rm -rf $NERIBOXDIR/sysroot/lib
+    fi
     unzip -f -q -o $UPDATEDIR/binary*.zip -d $NERIBOXDIR/sysroot
 fi
 
 ui_print "- 正在下载配置文件"
 $BUSYBOX wget --no-check-certificate -q "$etc_link" -P $UPDATEDIR --user-agent='pan.baidu.com'
 ui_print "- 正在释放配置文件"
+    for x in $NERIBOXDIR/sysroot/etc/{Default.parm,lighttpd.conf,aria2c.conf};do
+        rm -r $x
+    done
 unzip -f -q -o $UPDATEDIR/etc.zip -d $NERIBOXDIR/sysroot
 
 ui_print "- 正在下载AriaNg"
 $BUSYBOX wget --no-check-certificate -q "$ariang_link" -P $UPDATEDIR --user-agent='pan.baidu.com'
 ui_print "- 正在释放AriaNg"
+if [ -d $NERIBOXDIR/sysroot/www ];then
+    rm -rf $NERIBOXDIR/sysroot/www
+fi
 unzip -f -q -o $UPDATEDIR/AriaNg.zip -d $NERIBOXDIR/sysroot
 
 set_perm_recursive $MODPATH/ 0 0 0755 0644
