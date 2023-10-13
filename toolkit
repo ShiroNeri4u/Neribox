@@ -31,6 +31,7 @@ SQLITE_PATH="$EXE_DIR/sqlite3"
 JQ_PATH="$EXE_DIR/jq"
 OPENSSL_PATH="$EXE_DIR/openssl"
 FUSERMOUNT_PATH="$EXE_DIR/fusermount3"
+LSOF_PATH="$EXE_DIR/lsof"
 
 CONFIG_PATH="$NERIBOXDIR/config.ini"
 ALIST_CONFIG_PATH="$ETC_DIR/config.json"
@@ -42,8 +43,8 @@ UPDATEDIR="$NERIBOXDIR/update-cache"
 
 id=Neribox
 name=Neribox
-version=2.6
-versionCode=20230929
+version=2.7
+versionCode=20231013
 author=风又音理Neri
 
 function LANG () {
@@ -152,30 +153,17 @@ function STATUS () {
 	}
 	function PORT () {
         local PROGRAM=$1
-        while [ $# -gt 1 ]; do
-        if [ "$2" = "PORT" ];then
-        break
-        else
         case $PROGRAM in
         ARIA2)
-        if [ -z "$PORT" ];then
-        local PORT="$(/system/bin/lsof -p $2 | grep LISTEN | grep 5u | $BUSYBOX_PATH awk '{print $9}' | $BUSYBOX_PATH sed 's/[[]]//g' | $BUSYBOX_PATH sed s/"->:0"//g | $BUSYBOX_PATH sed s/:/\/g )"
-        elif [ -n "$PORT" ];then
-        local PORT="$PORT $(/system/bin/lsof -p $2 | grep LISTEN | grep 5u | $BUSYBOX_PATH awk '{print $9}' | $BUSYBOX_PATH sed 's/[[]]//g' | $BUSYBOX_PATH sed s/"->:0"//g | $BUSYBOX_PATH sed s/:/\/g )"
-        fi
-        shift
+        local PORT="$($LSOF_PATH -c aria2c -P -O -n | grep LISTEN | $BUSYBOX_PATH awk '{print $9}' | $BUSYBOX_PATH awk -F : '{print $2}' | head -n 2 | $BUSYBOX_PATH sort -u)"
         ;;
-        ALIST|LIGHTTPD)
-        if [ -z "$PORT" ];then
-        local PORT="$(/system/bin/lsof -p $2 | grep LISTEN | $BUSYBOX_PATH awk '{print $9}' | $BUSYBOX_PATH sed 's/[[]]//g' | $BUSYBOX_PATH sed s/"->:0"//g | $BUSYBOX_PATH sed s/:/\/g )"
-        elif [ -n "$PORT" ];then
-        local PORT="$PORT $(/system/bin/lsof -p $2 | grep LISTEN | $BUSYBOX_PATH awk '{print $9}' | $BUSYBOX_PATH sed 's/[[]]//g' | $BUSYBOX_PATH sed s/"->:0"//g | $BUSYBOX_PATH sed s/:/\/g )"
-        fi
-        shift
+        ALIST)
+        local PORT="$($LSOF_PATH -c alist -P -O -n | grep LISTEN | $BUSYBOX_PATH awk '{print $9}' | $BUSYBOX_PATH awk -F : '{print $2}' | $BUSYBOX_PATH sort -u)"
+        ;;
+        LIGHTTPD)
+        local PORT="$($LSOF_PATH -c lighttpd -P -O -n | grep LISTEN | $BUSYBOX_PATH awk '{print $9}' | $BUSYBOX_PATH awk -F : '{print $2}' | $BUSYBOX_PATH sort -u )"
         ;;
         esac
-        fi
-        done
         if [ ! "$2" = "PORT" ];then
 		    if [ -z "$PORT" ];then
 			    echo "${PROGRAM}_PORT=✘"
@@ -265,7 +253,7 @@ function STATUS () {
 	            shift
 	            ;;
                 PORT)
-                eval $(PORT $program $(PID $program PID) &)
+                eval $(PORT $program &)
                 shift
                 ;;
                 VERSION)
@@ -280,7 +268,7 @@ function STATUS () {
                 ;;
                 WEBUI)
                 if [ "$program" = "ARIA2" ];then
-                eval "WEBUI=($(PORT LIGHTTPD $(PID LIGHTTPD PID) PORT &))"
+                eval "WEBUI=$(PORT LIGHTTPD PORT &)"
                 fi
                 shift
                 ;;
