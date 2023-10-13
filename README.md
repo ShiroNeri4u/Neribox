@@ -17,3 +17,4 @@
 | [fusermount3](https://github.com/libfuse/libfuse) | `3.16.1` |NDK交叉编译| 21 |
 | [jq](https://github.com/jqlang/jq) | `1.7` |NDK交叉编译| 21 |
 | [openssl](https://www.openssl.org/)  | `3.1.3` |NDK交叉编译| 21 |
+| [lsof](https://github.com/lsof-org/lsof) | `4.98.0` |NDK交叉编译| 26| 
