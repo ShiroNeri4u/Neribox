@@ -27,7 +27,7 @@ function LANG () {
     local LANG=${LANG:1:5}
     if [ -f $MODPATH/support-lang/$LANG.txt ];then
         source $MODPATH/support-lang/$LANG.txt
-    else source $MODPATH/support-lang/zh-CN.txt
+    else source $MODPATH/support-lang/en-US.txt
     fi
 }
 
@@ -35,24 +35,24 @@ LANG
 
 mkdir -p $UPDATEDIR & chmod 777 $UPDATEDIR
 
-ui_print "- 获取资源链接"
+ui_print "- $TEXT_INSTALL_GETLINK"
 $BUSYBOX wget --no-check-certificate -q "https://kazamataneri.tech/link.txt" -P $UPDATEDIR
 source $UPDATEDIR/link.txt
 
 ARCH=$(getprop ro.product.cpu.abi)
 ui_print "- $TEXT_SOC_ARCH$ARCH"
 if [ "$ARCH" = "arm64-v8a" ];then
-ui_print "- 正在下载二进制文件"
+ui_print "- $TEXT_INSTALL_DOWNLOAD$TEXT_INSTALL_BINARY"
 $BUSYBOX wget --no-check-certificate -q "$bin64_link" -P $UPDATEDIR --user-agent='pan.baidu.com'
 elif [ "$ARCH" = "armeabi-v7a" ];then
-ui_print "- 正在下载二进制文件"
+ui_print "- $TEXT_INSTALL_DOWNLOAD$TEXT_INSTALL_BINARY"
 $BUSYBOX wget --no-check-certificate -q "$bin32_link" -P $UPDATEDIR --user-agent='pan.baidu.com'
 else
-    ui_print "- 没有当前架构的二进制文件"
+    ui_print "- $TEXT_INSTALL_NO_BINARY"
     exit
 fi
 if [ -f $UPDATEDIR/binary*.zip ];then
-    ui_print "- 正在释放二进制文件"
+    ui_print "- $TEXT_INSTALL_EXTRACT$TEXT_INSTALL_BINARY"
     if [ -d $NERIBOXDIR/sysroot/bin ];then
         rm -rf $NERIBOXDIR/sysroot/bin
     fi
@@ -62,17 +62,17 @@ if [ -f $UPDATEDIR/binary*.zip ];then
     $BUSYBOX_PATH unzip -q -o $UPDATEDIR/binary*.zip -d $NERIBOXDIR/sysroot
 fi
 
-ui_print "- 正在下载配置文件"
+ui_print "- $TEXT_INSTALL_DOWNLOAD$TEXT_INSTALL_PROFILE"
 $BUSYBOX wget --no-check-certificate -q "$etc_link" -P $UPDATEDIR --user-agent='pan.baidu.com'
-ui_print "- 正在释放配置文件"
+ui_print "- $TEXT_INSTALL_EXTRACT$TEXT_INSTALL_PROFILE"
     for x in $NERIBOXDIR/sysroot/etc/{Default.parm,lighttpd.conf,aria2c.conf};do
         rm -r $x
     done
 $BUSYBOX_PATH unzip -q -o $UPDATEDIR/etc.zip -d $NERIBOXDIR/sysroot
 
-ui_print "- 正在下载AriaNg"
+ui_print "- $TEXT_INSTALL_DOWNLOAD$TEXT_INSTALL_ARIANG"
 $BUSYBOX wget --no-check-certificate -q "$ariang_link" -P $UPDATEDIR --user-agent='pan.baidu.com'
-ui_print "- 正在释放AriaNg"
+ui_print "- $TEXT_INSTALL_EXTRACT$TEXT_INSTALL_ARIANG"
 if [ -d $NERIBOXDIR/sysroot/www ];then
     rm -rf $NERIBOXDIR/sysroot/www
 fi
@@ -87,7 +87,7 @@ CER_FILE="$(find $CER_DIR -type f -maxdepth 1)"
 if [ -z "$(echo $CER_FILE| grep SERVER-PRIVATE.key | grep SERVER.pem | grep CA.crt)" ];then
     chmod 777 $MODPATH/toolkit
     $MODPATH/toolkit openssl -mkcer -install
-    ui_print "- 生成并安装CA证书"
+    ui_print "- $TEXT_INSTALL_CERTIFICATE"
 fi
 
 CONFIG () {
@@ -122,69 +122,67 @@ done
 [ -z "$TERMUX_REPO" ] && TERMUX_REPO=https://packages-cf.termux.dev
 [ -z "$TRACKERLIST" ] && TRACKERLIST=https://cdn.jsdelivr.net/gh/ngosang/trackerslist@master/trackers_all_ip.txt
 [ -z "$ROOT_MANAGER" ] && ROOT_MANAGER="$(dumpsys window | grep mCurrentFocus | awk '{print $NF}' | awk -F / '{print $1}')"
-#创建配置文件
-echo "#true启用,false不启用
-#息屏控制，多少秒后关闭进程，0禁用
+
+echo "$TEXT_CONFIG_SCREEN
 AOD=$AOD
 
-#仪表盘是否开启
+$TEXT_CONFIG_DASHBOARD
 DASHBOARD=$DASHBOARD
 
-#仪表盘自义定样式
+$TEXT_CONFIG_STATUSBAR
 STATUSBAR=$STATUSBAR
 
-#AList进程守护
+$TEXT_CONFIG_DAEMON
 ALIST_DAEMON=$ALIST_DAEMON
 
-#AList启动端口，左边为http,右边为https，-1为禁用，端口可为0-66535之间
+$TEXT_CONFIG_ALIST_PORT
 ALIST_PORT=$ALIST_PORT
 
-#AList管理员密码（强制），仅对3.15.1版本以上生效
+$TEXT_CONFIG_ALIST_PASSWD
 ALIST_PASSWD=$ALIST_PASSWD
 
-#Aria2进程守护
+$TEXT_CONFIG_DAEMON
 ARIA2_DAEMON=$ARIA2_DAEMON
 
-#Aria2是否启用https
+$TEXT_CONFIG_ARIA2_HTTPS
 ARIA2_HTTPS=$ARIA2_HTTPS
 
-#AriaNG界面
+$TEXT_CONFIG_ARIANG_WEBUI
 ARIANG_WEBUI=$ARIANG_WEBUI
 
-#rclone守护进程
+$TEXT_CONFIG_DAEMON
 RCLONE_DAEMON=$RCLONE_DAEMON
 
-#默认本地挂载路径，不需要文件路径前缀
+$TEXT_CONFIG_MOUNTDIR
 MOUNTDIR=$MOUNTDIR
 
-#默认云端挂载路径，/为全部
+$TEXT_CONFIG_CLOUDDIR
 CLOUDDIR=$CLOUDDIR
 
-#frpc守护进程
+$TEXT_CONFIG_DAEMON
 FRPC_DAEMON=$FRPC_DAEMON
 
-#frpc启动参数
+$TEXT_CONFIG_FRPC_PARM
 FRPC_PARM=$FRPC_PARM
 
-#Termux仓库
+$TEXT_CONFIG_TERMUX_REPO
 TERMUX_REPO=$TERMUX_REPO
 
-#tracker服务器订阅链接
+$TEXT_CONFIG_TRACKERLIST
 TRACKERLIST=$TRACKERLIST
 
-#Root管理器包名
+$TEXT_CONFIG_ROOT_MANAGER
 ROOT_MANAGER=$ROOT_MANAGER
 " > $CONFIG_PATH
-ui_print "- 已生成配置文件"
-ui_print "- Root管理器包名$ROOT_MANAGER"
-ui_print "- 若不对在配置文件中修改"
+ui_print "- $TEXT_INSTALL_CONFIG"
+ui_print "- $TEXT_INSTALL_ROOT_MANAGER: $ROOT_MANAGER"
 
 if [ -d $NERIBOXDIR/PID ];then
-    ui_print "- 启用非重启模式"
     for x in $NERIBOXDIR/PID/clean $NERIBOXDIR/PID/aod $NERIBOXDIR/PID/daemon $NERIBOXDIR/PID/dashboard;do
     kill -9 $(cat $x)
 done
-    cp -f $MODPATH/toolkit $MODDIR/toolkit
-    cp -f $MODPATH/service.sh $MODDIR/service.sh
-    /system/bin/sh $MODDIR/service.sh
 fi
+cp -f $MODPATH/toolkit $MODDIR/toolkit
+cp -f $MODPATH/service.sh $MODDIR/service.sh
+/system/bin/sh $MODDIR/service.sh
+ui_print "- $TEXT_INSTALL_NOT_REBOOT"
