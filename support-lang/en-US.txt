@@ -34,7 +34,7 @@ TEXT_CONFIG_SCREEN="#screen control:kill process when screen off,type 0 to disab
 TEXT_CONFIG_DASHBOARD="#dashboard:control dashboard refresh"
 TEXT_CONFIG_STATUSBAR="#dashboard custom style"
 TEXT_CONFIG_DAEMON="#daemon:when process stop then restart"
-TEXT_CONFIG_ALIST_PORT"#AList port,http on left,https on right,type -1 to disable"
+TEXT_CONFIG_ALIST_PORT="#AList port,http on left,https on right,type -1 to disable"
 TEXT_CONFIG_ALIST_PASSWD="#AList admin password,only able to 3.15.1 or adove"
 TEXT_CONFIG_ARIA2_HTTPS="#Aria2 https"
 TEXT_CONFIG_ARIANG_WEBUI="#Aria2 WebUI"

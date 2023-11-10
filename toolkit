@@ -44,7 +44,7 @@ UPDATEDIR="$NERIBOXDIR/update-cache"
 id=Neribox
 name=Neribox
 version=2.7
-versionCode=20231019
+versionCode=20231109
 author=风又音理Neri
 
 function LANG () {
@@ -652,8 +652,7 @@ function TRACKERLIST () {
 function ECHO_VERSION () {
     LANG
     if [ -z "$1" ];then
-    local DATA="$(CONFIG $MODDIR/module.prop versionCode)"
-    echo -e "$TEXT_MOD_NAME:$TEXT_NERIBOX\n$TEXT_VERSION:"$(CONFIG $MODDIR/module.prop version)"\n$TEXT_UPDATE_DATE:"${DATA:0:4}"$TEXT_YEAR"${DATA:4:2}"$TEXT_MONTH"${DATA:6:2}"$TEXT_DAY\n$TEXT_AUTHOR:"$(CONFIG $MODDIR/module.prop author)""
+    echo -e "$TEXT_MOD_NAME:$TEXT_NERIBOX\n$TEXT_VERSION:"$version"\n$TEXT_UPDATE_DATE:"${versionCode:0:4}"$TEXT_YEAR"${versionCode:4:2}"$TEXT_MONTH"${versionCode:6:2}"$TEXT_DAY\n$TEXT_AUTHOR:"$author""
     elif [ -n "$1" ];then
     STATUS $1[VERSION]
     echo $TEXT_VERSION:"$(INFORMATION_ECHO $1 VERSION)"
@@ -696,7 +695,7 @@ function PROGRAM_NAME () {
     
 function INFORMATION_ECHO () {
     local ENV=$(set|tr "\n" "*")
-    local ENV=$(echo $ENV | tr "*" "\n" | $BUSYBOX_PATH grep "$1_$2" | awk -F "=" '{print $2}')
+    local ENV=$(echo $ENV | tr "*" "\n" | $BUSYBOX_PATH egrep "^$1_$2=" | awk -F "=" '{print $2}')
     echo $ENV
     }
 

@@ -43,10 +43,10 @@ ARCH=$(getprop ro.product.cpu.abi)
 ui_print "- $TEXT_SOC_ARCH$ARCH"
 if [ "$ARCH" = "arm64-v8a" ];then
 ui_print "- $TEXT_INSTALL_DOWNLOAD$TEXT_INSTALL_BINARY"
-$BUSYBOX wget --no-check-certificate -q "$bin64_link" -P $UPDATEDIR --user-agent='pan.baidu.com'
+$BUSYBOX wget --no-check-certificate -q "$bin64_link" -P $UPDATEDIR
 elif [ "$ARCH" = "armeabi-v7a" ];then
 ui_print "- $TEXT_INSTALL_DOWNLOAD$TEXT_INSTALL_BINARY"
-$BUSYBOX wget --no-check-certificate -q "$bin32_link" -P $UPDATEDIR --user-agent='pan.baidu.com'
+$BUSYBOX wget --no-check-certificate -q "$bin32_link" -P $UPDATEDIR
 else
     ui_print "- $TEXT_INSTALL_NO_BINARY"
     exit
@@ -63,7 +63,7 @@ if [ -f $UPDATEDIR/binary*.zip ];then
 fi
 
 ui_print "- $TEXT_INSTALL_DOWNLOAD$TEXT_INSTALL_PROFILE"
-$BUSYBOX wget --no-check-certificate -q "$etc_link" -P $UPDATEDIR --user-agent='pan.baidu.com'
+$BUSYBOX wget --no-check-certificate -q "$etc_link" -P $UPDATEDIR
 ui_print "- $TEXT_INSTALL_EXTRACT$TEXT_INSTALL_PROFILE"
     for x in $NERIBOXDIR/sysroot/etc/{Default.parm,lighttpd.conf,aria2c.conf};do
         rm -r $x
@@ -71,7 +71,7 @@ ui_print "- $TEXT_INSTALL_EXTRACT$TEXT_INSTALL_PROFILE"
 $BUSYBOX_PATH unzip -q -o $UPDATEDIR/etc.zip -d $NERIBOXDIR/sysroot
 
 ui_print "- $TEXT_INSTALL_DOWNLOAD$TEXT_INSTALL_ARIANG"
-$BUSYBOX wget --no-check-certificate -q "$ariang_link" -P $UPDATEDIR --user-agent='pan.baidu.com'
+$BUSYBOX wget --no-check-certificate -q "$ariang_link" -P $UPDATEDIR
 ui_print "- $TEXT_INSTALL_EXTRACT$TEXT_INSTALL_ARIANG"
 if [ -d $NERIBOXDIR/sysroot/www ];then
     rm -rf $NERIBOXDIR/sysroot/www
